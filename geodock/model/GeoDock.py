@@ -49,6 +49,8 @@ class GeoDock(pl.LightningModule):
         self.loss = GeoDockLoss()
 
     def forward(self, input: GeoDockInput):
+        # Likely here call ESM embeddings on the fly
+
         # Inputs
         protein1_embeddings = input.protein1_embeddings
         protein2_embeddings = input.protein2_embeddings

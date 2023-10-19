@@ -12,7 +12,8 @@ from tqdm import tqdm
 from torch.utils import data
 from einops import rearrange, repeat
 from esm.inverse_folding.util import load_coords
-from src.utils.pdb import save_PDB, place_fourth_atom 
+# from src.utils.pdb import save_PDB, place_fourth_atom 
+from geodock.utils.pdb import save_PDB, place_fourth_atom 
 from torch_geometric.data import HeteroData
 
 
@@ -20,41 +21,63 @@ class GeoDockDataset(data.Dataset):
     def __init__(
         self, 
         save_dir: str,
-        dataset: str = 'dips_test',
+        dataset: str = 'pinder',
         out_pdb: bool = False,
         device: str = 'cpu',
     ):
         if dataset == 'dips_test':
-            self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/Docking-dev/data/equidock"
+            self.data_dir = "/home/tomasgeffner/GeoDock/geodock/data/test"
             self.file_list = [i[:-21] for i in os.listdir(self.data_dir) if i[-3:] == 'pdb'] 
-            self.file_list = list(dict.fromkeys(self.file_list)) # remove duplicates
+            self.file_list = list(dict.fromkeys(self.file_list))  # remove duplicates
+            print(self.file_list)
+            exit()
 
-        elif dataset == 'db5_bound':
-            self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/Docking-dev/data/db5.5/structures"
-            self.file_list = [i[0:4] for i in os.listdir(self.data_dir) if i[-3:] == 'pdb'] 
-            self.file_list = list(dict.fromkeys(self.file_list)) # remove duplicates
+        if dataset == 'pinder':
+            self.data_dir = "/home/tomasgeffner/pinder_copy"
 
-        elif dataset == 'db5_unbound':
-            self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/Docking-dev/data/db5.5/structures"
-            self.file_list = [i[0:4] for i in os.listdir(self.data_dir) if i[-3:] == 'pdb'] 
-            self.file_list = list(dict.fromkeys(self.file_list)) # remove duplicates
+            file_list = []
+            for root, dirs, files in os.walk(self.data_dir):
+                # if "apo" in root or "holo" in root or "predicted" in root:
+                #     # Only keep those 
+                #     print(root, dirs, files)
+                for f in files:
+                    if ".pdb" in f:
+                        file_list.append(os.path.join(root, f))
+            self.file_list = file_list
+
+
+            # self.file_list = [i[:-21] for i in os.listdir(self.data_dir) if i[-3:] == 'pdb'] 
+            # self.file_list = list(dict.fromkeys(self.file_list))  # remove duplicates
+
+            # print(self.file_list)
+            exit()
+
+        # elif dataset == 'db5_bound':
+        #     self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/Docking-dev/data/db5.5/structures"
+        #     self.file_list = [i[0:4] for i in os.listdir(self.data_dir) if i[-3:] == 'pdb'] 
+        #     self.file_list = list(dict.fromkeys(self.file_list)) # remove duplicates
+
+        # elif dataset == 'db5_unbound':
+        #     self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/Docking-dev/data/db5.5/structures"
+        #     self.file_list = [i[0:4] for i in os.listdir(self.data_dir) if i[-3:] == 'pdb'] 
+        #     self.file_list = list(dict.fromkeys(self.file_list)) # remove duplicates
         
-        elif dataset == 'db5_unbound_flexible':
-            self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/ReplicaDock2/AF_RepD2_set/flexible_targets/unbound"
-            self.partner_dir = "/home/lchu11/scr4_jgray21/lchu11/ReplicaDock2/AF_RepD2_set/flexible_targets/partners"
-            self.file_list = [i[:4] for i in os.listdir(self.data_dir) if i[-3:] == 'pdb']
+        # elif dataset == 'db5_unbound_flexible':
+        #     self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/ReplicaDock2/AF_RepD2_set/flexible_targets/unbound"
+        #     self.partner_dir = "/home/lchu11/scr4_jgray21/lchu11/ReplicaDock2/AF_RepD2_set/flexible_targets/partners"
+        #     self.file_list = [i[:4] for i in os.listdir(self.data_dir) if i[-3:] == 'pdb']
 
-        elif dataset == 'db5_bound_flexible':
-            self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/ReplicaDock2/AF_RepD2_set/flexible_targets/bound"
-            self.partner_dir = "/home/lchu11/scr4_jgray21/lchu11/ReplicaDock2/AF_RepD2_set/flexible_targets/partners"
-            self.file_list = [i[:4] for i in os.listdir(self.data_dir) if i[-3:] == 'pdb']
+        # elif dataset == 'db5_bound_flexible':
+        #     self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/ReplicaDock2/AF_RepD2_set/flexible_targets/bound"
+        #     self.partner_dir = "/home/lchu11/scr4_jgray21/lchu11/ReplicaDock2/AF_RepD2_set/flexible_targets/partners"
+        #     self.file_list = [i[:4] for i in os.listdir(self.data_dir) if i[-3:] == 'pdb']
 
-        elif dataset == 'abag_test':
-            self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/Docking-dev/data/exp_aa/cleaned/"
-            pdb_list = pd.read_csv("/home/lchu11/scr4_jgray21/lchu11/Docking-dev/data/exp_aa/pdb_list.csv")
-            self.file_list = pdb_list['pdb_id'].to_list()
-            self.partner1 = pdb_list['partner1'].to_list()
-            self.partner2 = pdb_list['partner2'].to_list()
+        # elif dataset == 'abag_test':
+        #     self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/Docking-dev/data/exp_aa/cleaned/"
+        #     pdb_list = pd.read_csv("/home/lchu11/scr4_jgray21/lchu11/Docking-dev/data/exp_aa/pdb_list.csv")
+        #     self.file_list = pdb_list['pdb_id'].to_list()
+        #     self.partner1 = pdb_list['partner1'].to_list()
+        #     self.partner2 = pdb_list['partner2'].to_list()
         
         self.dataset = dataset
         self.save_dir = save_dir 
@@ -62,7 +85,12 @@ class GeoDockDataset(data.Dataset):
         self.device = device
 
         # Load esm
-        esm_model, alphabet = esm.pretrained.load_model_and_alphabet('/home/lchu11/.cache/torch/hub/checkpoints/esm2_t33_650M_UR50D.pt')
+
+        # import torch
+        # model, alphabet = torch.hub.load("facebookresearch/esm:main", "esm2_t33_650M_UR50D")
+
+        # esm_model, alphabet = esm.pretrained.load_model_and_alphabet('/home/lchu11/.cache/torch/hub/checkpoints/esm2_t33_650M_UR50D.pt')
+        esm_model, alphabet = esm.pretrained.load_model_and_alphabet('/home/tomasgeffner/.cache/torch/hub/checkpoints/esm2_t33_650M_UR50D.pt')
         self.batch_converter = alphabet.get_batch_converter()
         self.esm_model = esm_model.to(device).eval()
 
@@ -76,70 +104,70 @@ class GeoDockDataset(data.Dataset):
             coords1 = torch.nan_to_num(torch.from_numpy(coords1))
             coords2 = torch.nan_to_num(torch.from_numpy(coords2))
         
-        elif self.dataset == 'db5_bound':
-            # Get info from file_list
-            _id = self.file_list[idx] 
-            pdb_file_1 = os.path.join(self.data_dir, _id+"_r_b.pdb")
-            pdb_file_2 = os.path.join(self.data_dir, _id+"_l_b.pdb")
-            coords1, seq1 = load_coords(pdb_file_1, chain=None)
-            coords2, seq2 = load_coords(pdb_file_2, chain=None)
-            coords1 = torch.nan_to_num(torch.from_numpy(coords1))
-            coords2 = torch.nan_to_num(torch.from_numpy(coords2))
+        # elif self.dataset == 'db5_bound':
+        #     # Get info from file_list
+        #     _id = self.file_list[idx] 
+        #     pdb_file_1 = os.path.join(self.data_dir, _id+"_r_b.pdb")
+        #     pdb_file_2 = os.path.join(self.data_dir, _id+"_l_b.pdb")
+        #     coords1, seq1 = load_coords(pdb_file_1, chain=None)
+        #     coords2, seq2 = load_coords(pdb_file_2, chain=None)
+        #     coords1 = torch.nan_to_num(torch.from_numpy(coords1))
+        #     coords2 = torch.nan_to_num(torch.from_numpy(coords2))
 
-        elif self.dataset == 'db5_unbound':
-            # Get info from file_list
-            _id = self.file_list[idx] 
-            pdb_file_1 = os.path.join(self.data_dir, _id+"_r_u.pdb")
-            pdb_file_2 = os.path.join(self.data_dir, _id+"_l_u.pdb")
-            coords1, seq1 = load_coords(pdb_file_1, chain=None)
-            coords2, seq2 = load_coords(pdb_file_2, chain=None)
-            coords1 = torch.nan_to_num(torch.from_numpy(coords1))
-            coords2 = torch.nan_to_num(torch.from_numpy(coords2))
+        # elif self.dataset == 'db5_unbound':
+        #     # Get info from file_list
+        #     _id = self.file_list[idx] 
+        #     pdb_file_1 = os.path.join(self.data_dir, _id+"_r_u.pdb")
+        #     pdb_file_2 = os.path.join(self.data_dir, _id+"_l_u.pdb")
+        #     coords1, seq1 = load_coords(pdb_file_1, chain=None)
+        #     coords2, seq2 = load_coords(pdb_file_2, chain=None)
+        #     coords1 = torch.nan_to_num(torch.from_numpy(coords1))
+        #     coords2 = torch.nan_to_num(torch.from_numpy(coords2))
 
-        elif self.dataset == 'db5_unbound_flexible':
-            _id = self.file_list[idx] 
-            print(_id)
-            model_file = os.path.join(self.data_dir, _id+"_unbound.pdb")
-            partner_file = os.path.join(self.partner_dir, _id+"_partners") 
+        # elif self.dataset == 'db5_unbound_flexible':
+        #     _id = self.file_list[idx] 
+        #     print(_id)
+        #     model_file = os.path.join(self.data_dir, _id+"_unbound.pdb")
+        #     partner_file = os.path.join(self.partner_dir, _id+"_partners") 
 
-            with open(partner_file, 'r') as f:
-                partner = f.readline().strip().split()[1]
-                model_partner1 = partner.split('_')[0]
-                model_partner2 = partner.split('_')[1]
+        #     with open(partner_file, 'r') as f:
+        #         partner = f.readline().strip().split()[1]
+        #         model_partner1 = partner.split('_')[0]
+        #         model_partner2 = partner.split('_')[1]
                 
-            coords1, seq1 = load_coords(model_file, chain=[*model_partner1])
-            coords2, seq2 = load_coords(model_file, chain=[*model_partner2])
+        #     coords1, seq1 = load_coords(model_file, chain=[*model_partner1])
+        #     coords2, seq2 = load_coords(model_file, chain=[*model_partner2])
 
-            coords1 = torch.nan_to_num(torch.from_numpy(coords1))
-            coords2 = torch.nan_to_num(torch.from_numpy(coords2))
+        #     coords1 = torch.nan_to_num(torch.from_numpy(coords1))
+        #     coords2 = torch.nan_to_num(torch.from_numpy(coords2))
 
-        elif self.dataset == 'db5_bound_flexible':
-            _id = self.file_list[idx] 
-            print(_id)
-            model_file = os.path.join(self.data_dir, _id+"_bound.pdb")
-            partner_file = os.path.join(self.partner_dir, _id+"_partners") 
+        # elif self.dataset == 'db5_bound_flexible':
+        #     _id = self.file_list[idx] 
+        #     print(_id)
+        #     model_file = os.path.join(self.data_dir, _id+"_bound.pdb")
+        #     partner_file = os.path.join(self.partner_dir, _id+"_partners") 
 
-            with open(partner_file, 'r') as f:
-                partner = f.readline().strip().split()[1]
-                model_partner1 = partner.split('_')[0]
-                model_partner2 = partner.split('_')[1]
+        #     with open(partner_file, 'r') as f:
+        #         partner = f.readline().strip().split()[1]
+        #         model_partner1 = partner.split('_')[0]
+        #         model_partner2 = partner.split('_')[1]
                 
-            coords1, seq1 = load_coords(model_file, chain=[*model_partner1])
-            coords2, seq2 = load_coords(model_file, chain=[*model_partner2])
+        #     coords1, seq1 = load_coords(model_file, chain=[*model_partner1])
+        #     coords2, seq2 = load_coords(model_file, chain=[*model_partner2])
 
-            coords1 = torch.nan_to_num(torch.from_numpy(coords1))
-            coords2 = torch.nan_to_num(torch.from_numpy(coords2))
+        #     coords1 = torch.nan_to_num(torch.from_numpy(coords1))
+        #     coords2 = torch.nan_to_num(torch.from_numpy(coords2))
 
-        elif self.dataset == 'abag_test':
-            # Get info from file_list
-            _id = self.file_list[idx] 
-            partner1 = list(self.partner1[idx])
-            partner2 = list(self.partner2[idx])
-            pdb_file = os.path.join(self.data_dir, _id+".pdb")
-            coords1, seq1 = load_coords(pdb_file, partner1)
-            coords2, seq2 = load_coords(pdb_file, partner2)
-            coords1 = torch.nan_to_num(torch.from_numpy(coords1))
-            coords2 = torch.nan_to_num(torch.from_numpy(coords2))
+        # elif self.dataset == 'abag_test':
+        #     # Get info from file_list
+        #     _id = self.file_list[idx] 
+        #     partner1 = list(self.partner1[idx])
+        #     partner2 = list(self.partner2[idx])
+        #     pdb_file = os.path.join(self.data_dir, _id+".pdb")
+        #     coords1, seq1 = load_coords(pdb_file, partner1)
+        #     coords2, seq2 = load_coords(pdb_file, partner2)
+        #     coords1 = torch.nan_to_num(torch.from_numpy(coords1))
+        #     coords2 = torch.nan_to_num(torch.from_numpy(coords2))
 
         # ESM embedding
         esm_rep1 = self.get_esm_rep(seq1)
@@ -211,8 +239,9 @@ class GeoDockDataset(data.Dataset):
 
 
 if __name__ == '__main__':
-    name = 'db5_unbound_flexible'
-    save_dir = '/home/lchu11/scr4_jgray21/lchu11/Docking-dev/data/pts/'+name 
+    # name = 'pinder'
+    name = 'dips_test'
+    save_dir = '/home/tomasgeffner/GeoDock_data_proc/'+name 
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
         print(f"Created directory: {save_dir}")
