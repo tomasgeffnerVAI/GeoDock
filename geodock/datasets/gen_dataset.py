@@ -211,8 +211,8 @@ class GeoDockDataset(data.Dataset):
 
 
 if __name__ == '__main__':
-    name = 'db5_unbound_flexible'
-    save_dir = '/home/lchu11/scr4_jgray21/lchu11/Docking-dev/data/pts/'+name 
+    name = 'file_example'
+    save_dir = '/tomasgeffner/GeoDock_data/pts/'+name 
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
         print(f"Created directory: {save_dir}")
