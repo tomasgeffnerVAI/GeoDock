@@ -68,6 +68,10 @@ class GeoDockDataset(data.Dataset):
 
         if self.dataset == 'pinder':
             pdb_file = self.file_list[idx]
+            mode = pdb_file.split("/")[-2]
+            do_esm = True
+            if mode not in ["apo", "holo", "predicted"]:
+                do_esm = False
             # coords, seq = load_coords(pdb_file, chain=None)
             try:
                 # This line is sometimes problematic leads to some failures
@@ -102,7 +106,9 @@ class GeoDockDataset(data.Dataset):
             coords = torch.nan_to_num(torch.from_numpy(coords))
 
             # ESM embedding
-            esm_rep = self.get_esm_rep(seq)
+            esm_rep = None
+            if do_esm:
+                esm_rep = self.get_esm_rep(seq)
 
             # save data to a hetero graph 
             data = HeteroData()
