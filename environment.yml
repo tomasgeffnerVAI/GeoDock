@@ -1,4 +1,4 @@
-name: geodock
+name: geodock2
 channels:
   - conda-forge
 dependencies:

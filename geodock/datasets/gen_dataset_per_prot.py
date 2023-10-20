@@ -12,14 +12,16 @@ from tqdm import tqdm
 from torch.utils import data
 from einops import rearrange, repeat
 # from src.utils.pdb import save_PDB, place_fourth_atom 
-from geodock.utils.pdb import save_PDB, place_fourth_atom 
+# from geodock.utils.pdb import save_PDB, place_fourth_atom 
 from torch_geometric.data import HeteroData
 # from esm.inverse_folding.util import load_coords  # This was the original one that fails for "CSO"
 # from geodock.utils.esm_utils_struct import load_coords  # I don't get why this does not work wtffff
 
 import sys
-sys.path.append("/home/tomasgeffner/GeoDock/geodock/utils")
-from esm_utils_struct import load_coords 
+# sys.path.append("/home/tomasgeffner/GeoDock/geodock/utils")
+sys.path.append("/home/tomasgeffner/GeoDock")
+from geodock.utils.esm_utils_struct import load_coords 
+from geodock.utils.pdb import save_PDB, place_fourth_atom 
 
 class GeoDockDataset(data.Dataset):
     def __init__(
