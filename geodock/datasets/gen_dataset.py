@@ -212,7 +212,7 @@ class GeoDockDataset(data.Dataset):
 
 if __name__ == '__main__':
     name = 'file_example'
-    save_dir = '/tomasgeffner/GeoDock_data/pts/'+name 
+    save_dir = '/GeoDock_data/pts/'+name 
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
         print(f"Created directory: {save_dir}")
