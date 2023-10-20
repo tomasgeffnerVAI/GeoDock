@@ -10,7 +10,8 @@ from omegaconf import DictConfig
 @hydra.main(config_path="config/", config_name="config.yaml")
 def main(config: DictConfig):
     torch.manual_seed(0)
-
+    import sys
+    sys.path.append("/home/celine/GeoDock")
     # Imports can be nested inside @hydra.main to optimize tab completion
     # https://github.com/facebookresearch/hydra/issues/934
     from geodock.trainer.train import train

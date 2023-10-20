@@ -31,70 +31,101 @@ class GeoDockDataset(data.Dataset):
         self.use_Cb = use_Cb
 
         if dataset == 'pinder_toyexample_train':
-            self.data_dir = "/home/tomasgeffner/pinder_copy/splits/train"
-            self.data_list = "/home/pinder_copy/train_entries.txt" 
+            self.data_dir = "/home/tomasgeffner/pinder_copy/splits_v2/train"
+            self.data_list = "/home/tomasgeffner/pinder_copy/train_processed.txt"
             with open(self.data_list, 'r') as f:
                 lines = f.readlines()
             self.file_list = [line.strip() for line in lines] 
 
         elif dataset == 'pinder_toyexample_test':
-            self.data_dir = "/home/tomasgeffner/pinder_copy/splits/test"
-            self.data_list = "/home/pinder_copy/test_entries.txt" 
+            self.data_dir = "/home/tomasgeffner/pinder_copy/splits_v2/test"
+            self.data_list = "/home/tomasgeffner/pinder_copy/test_processed.txt" 
             with open(self.data_list, 'r') as f:
                 lines = f.readlines()
-            self.file_list = [line.strip() for line in lines] 
+            self.file_list = [line.strip() for line in lines]
+        
 
     def __getitem__(self, idx: int):
-        if self.dataset[:4] == 'dips' and self.dataset != 'dips_test': # DQ why?
+#        if self.dataset == 'pinder_toyexample_train' and self.dataset != 'pinder_toyexample_test': # DQ why?
             # Get info from file_list 
-            _id = self.file_list[idx]
-            #split_string = _id.split('/')
-            #_id = split_string[0] + '_' + split_string[1].rsplit('.', 1)[0]
-            
+        _id = self.file_list[idx]
+        #split_string = _id.split('/')
+        #_id = split_string[0] + '_' + split_string[1].rsplit('.', 1)[0]
+        
+        path_complex = os.path.join(self.data_dir, _id, _id+'.pt')
+        if os.path.exists(path_complex):
+            data_complex = torch.load(path_complex)
+        else:
+            print("not good")
 
-            path_complex = os.path.join(self.data_dir, _id, _id+'.pt')
-            if os.path.exists(path_complex):
-                data_complex =  torch.load(path_complex)
-            else:
-                print("not good")
+        #####
+        # DQ random sample here?
+        source_list = ['holo']#['apo/', 'apo/alt/', 'holo/', 'predicted/']
+        
+        def find_existing_files(data_dir, source_list):
+            extension=["_L.pt","_R.pt"]
+            data = dict()
 
-            #####
-            # DQ random sample here?
-            source_list = ['apo', 'apo/alt' 'holo', 'predicted']
-            
-            def find_existing_file(self, data_dir, source_list, ext):
+            for ext in extension:
                 random.shuffle(source_list)
 
                 for element in source_list:
                     # Construct path
-                    file_path = os.path.join(data_dir, _id, element)
+                    file_path = os.path.join(self.data_dir, _id, element)
+                    #print("Path", file_path)
+                    files_in_directory = os.listdir(file_path)
+                    #print("Files in path", files_in_directory)
+
                     # check if file exists
-                    matching_files = [file for file in file_path if file.endswith(ext)]
+                    matching_files = [file for file in files_in_directory if file.endswith(ext)]
+                    #
                     if matching_files:
+                        #print("matched file", matching_files)
                         # Load the first matching file (?) -> apo/alt is issue
-                        data = torch.load(os.path.join(file_path, matching_files[0]))
-                        return data
-                return None  # If no existing file is found, return None
+                        data[ext] = torch.load(os.path.join(file_path, matching_files[0]))
+            #print(_id, data)
 
-            data_L = find_existing_file(self.data_dir, source_list, "_L.pt")
-            data_R = find_existing_file(self.data_dir, source_list, "_R.pt")
-            #####
-            
-            #data = torch.load(os.path.join(self.data_dir, _id+'.pt'))
+            return data["_L.pt"], data["_R.pt"]
+                    #raise IOError(file_path, "it not working")
+                
+            #return "No file"  # If no existing file is found, return None
 
-        else: # DQ > why?
-            data = torch.load(os.path.join(self.data_dir, self.file_list[idx]+'.pt'))
+        data_L, data_R = find_existing_files(self.data_dir, source_list)
+        #print ("Ligand", _id, data_L)
 
-        # get receptor
-            #old:_id = data.name
-        seq1 = data_R['receptor'].seq
-        coords1 = data_R['receptor'].pos
-        protein1_embeddings = data_R['receptor'].x
+        #data_R = find_existing_file(self.data_dir, source_list, ext ="_R.pt")
+        #print("receptor", _id, data_R)
+
+        
+        #####
+        
+        #data = torch.load(os.path.join(self.data_dir, _id+'.pt'))
+
+            # get receptor
+                #old:_id = data.name
+        seq1 = data_R['prot'].seq
+        coords1 = data_R['prot'].pos
+        protein1_embeddings = data_R['prot'].x
 
         # get ligand
-        seq2 = data_L['ligand'].seq
-        coords2 = data_L['ligand'].pos
-        protein2_embeddings = data_L['ligand'].x
+        seq2 = data_L['prot'].seq
+        coords2 = data_L['prot'].pos
+        protein2_embeddings = data_L['prot'].x
+
+        # Get ground truth complex
+        coords1_true = data_complex['receptor'].pos
+        coords2_true = data_complex['ligand'].pos
+
+        if coords1.shape[0] != coords1_true.shape[0]:
+            L_m = min(coords1.shape[0], coords1_true.shape[0])
+            coords1 = coords1[:L_m, :, :]
+            coords1_true = coords1_true[:L_m, :, :]
+
+        if coords2.shape[0] != coords2_true.shape[0]:
+            L_m = min(coords2.shape[0], coords2_true.shape[0])
+            coords2 = coords2[:L_m, :, :]
+            coords2_true = coords2_true[:L_m, :, :]
+
 
         # crop > 500
         if not self.is_testing:
@@ -107,15 +138,18 @@ class GeoDockDataset(data.Dataset):
                         n = random.randint(0, len(seq1)-crop_len)
                         seq1 = seq1[n:n+crop_len]
                         coords1 = coords1[n:n+crop_len]
+                        coords1_true = coords1_true[n:n+crop_len]
                         protein1_embeddings = protein1_embeddings[n:n+crop_len]
                     else:
                         n1 = random.randint(0, len(seq1)-crop_size_per_chain)
                         seq1 = seq1[n1:n1+crop_size_per_chain]
                         coords1 = coords1[n1:n1+crop_size_per_chain]
+                        coords1_true = coords1_true[n1:n1+crop_size_per_chain]
                         protein1_embeddings = protein1_embeddings[n1:n1+crop_size_per_chain]
                         n2 = random.randint(0, len(seq2)-crop_size_per_chain)
                         seq2 = seq2[n2:n2+crop_size_per_chain]
                         coords2 = coords2[n2:n2+crop_size_per_chain]
+                        coords2_true = coords2_true[n2:n2+crop_size_per_chain]
                         protein2_embeddings = protein2_embeddings[n2:n2+crop_size_per_chain]
 
                 elif len(seq2) > len(seq1):
@@ -124,36 +158,38 @@ class GeoDockDataset(data.Dataset):
                         n = random.randint(0, len(seq2)-crop_len)
                         seq2 = seq2[n:n+crop_len]
                         coords2 = coords2[n:n+crop_len]
+                        coords2_true = coords2_true[n:n+crop_len]
                         protein2_embeddings = protein2_embeddings[n:n+crop_len]
                     else:
                         n1 = random.randint(0, len(seq1)-crop_size_per_chain)
                         seq1 = seq1[n1:n1+crop_size_per_chain]
                         coords1 = coords1[n1:n1+crop_size_per_chain]
+                        coords1_true = coords1_true[n1:n1+crop_size_per_chain]
                         protein1_embeddings = protein1_embeddings[n1:n1+crop_size_per_chain]
                         n2 = random.randint(0, len(seq2)-crop_size_per_chain)
                         seq2 = seq2[n2:n2+crop_size_per_chain]
                         coords2 = coords2[n2:n2+crop_size_per_chain]
+                        coords2_true = coords2_true[n2:n2+crop_size_per_chain]
                         protein2_embeddings = protein2_embeddings[n2:n2+crop_size_per_chain]
                 else:
                     n = random.randint(0, len(seq1)-crop_size_per_chain)
                     seq1 = seq1[n:n+crop_size_per_chain]
                     coords1 = coords1[n:n+crop_size_per_chain]
+                    coords1_true = coords1_true[n:n+crop_size_per_chain]
                     protein1_embeddings = protein1_embeddings[n:n+crop_size_per_chain]
                     seq2 = seq2[n:n+crop_size_per_chain]
                     coords2 = coords2[n:n+crop_size_per_chain]
+                    coords2_true = coords2_true[n:n+crop_size_per_chain]
                     protein2_embeddings = protein2_embeddings[n:n+crop_size_per_chain]
 
         try:
             assert len(seq1) == coords1.size(0) == protein1_embeddings.size(0)
             assert len(seq2) == coords2.size(0) == protein2_embeddings.size(0) 
         except:
-            print(_id)
+            print(_id, " Problem with seq==coord==emb length")
         
-        # Get ground truth complex
-        coords1 = data_complex['receptor'].pos
-        coords2 = data_complex['ligand'].pos
 
-        label_coords = torch.cat([coords1, coords2], dim=0)
+        label_coords = torch.cat([coords1_true, coords2_true], dim=0)
         label_rotat = self.get_rotat(label_coords)
         label_trans = self.get_trans(label_coords)
 
