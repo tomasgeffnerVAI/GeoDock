@@ -11,11 +11,15 @@ import torch.nn.functional as F
 from tqdm import tqdm
 from torch.utils import data
 from einops import rearrange, repeat
-from esm.inverse_folding.util import load_coords
 # from src.utils.pdb import save_PDB, place_fourth_atom 
 from geodock.utils.pdb import save_PDB, place_fourth_atom 
 from torch_geometric.data import HeteroData
+# from esm.inverse_folding.util import load_coords  # This was the original one that fails for "CSO"
+# from geodock.utils.esm_utils_struct import load_coords  # I don't get why this does not work wtffff
 
+import sys
+sys.path.append("/home/tomasgeffner/GeoDock/geodock/utils")
+from esm_utils_struct import load_coords 
 
 class GeoDockDataset(data.Dataset):
     def __init__(
@@ -72,21 +76,20 @@ class GeoDockDataset(data.Dataset):
                 #   https://github.com/facebookresearch/esm/blob/2b369911bb5b4b0dda914521b9475cad1656b2ac/esm/inverse_folding/util.py#L105C35-L105C35
                 # For isntance, for this file /home/tomasgeffner/pinder_copy/splits/test/1jma__A1_Q92956--1jma__B1_P57083/apo/1jma__B1_P57083_L.pdb
 
+                # Update, this has to do with broken APOs, and a few others...
+
                 # Other error is "CSO" is a key error comes from ProteinSequence._dict_3to1[symbol.upper()] (I think symbol.upper is "CSO") comes from
                 #   https://github.com/facebookresearch/esm/blob/2b369911bb5b4b0dda914521b9475cad1656b2ac/esm/inverse_folding/util.py#L73C1-L73C1
                 # For isntance, for this file /home/tomasgeffner/pinder_copy/splits/test/2es4__A1_P0DUB8--2es4__B1_Q05490/2es4__A1_P0DUB8--2es4__B1_Q05490.pdb
 
-                # Both errors come from the use of biotite
-                # The second one is strange, because we use biotite to load stuff, it returs that residue, and then fails to know what it is...
+                # This has to do with non-standard aa
+                # Fixed by changing the function used to transform non standard to standard variants
 
-                # Both errors come from using the esm stuff to load coords and seq
-                # Essentially this function
-                # https://github.com/facebookresearch/esm/blob/2b369911bb5b4b0dda914521b9475cad1656b2ac/esm/inverse_folding/util.py#L77C4-L77C4
-
-                # seq is your typical sequence
-                # coords is a numpy array of shape [nres, 3, 3] for N, CA, C coordinates
-
-                # Maybe we can use our own function here?
+                # Found
+                # "CSO" -> "CYS" 
+                # "SEP" -> "SER"
+                # "TPO" -> "THR"
+                # "MLY" -> "LYS"
             
             except Exception as e:
                 fail = True
@@ -133,33 +136,6 @@ class GeoDockDataset(data.Dataset):
         
         return rep[0, 1:-1, :]
 
-    # def convert_to_torch_tensor(self, atom_coords):
-    #     # Convert atom_coords to torch tensor.
-    #     n_coords = torch.Tensor(atom_coords['N'])
-    #     ca_coords = torch.Tensor(atom_coords['CA'])
-    #     c_coords = torch.Tensor(atom_coords['C'])
-    #     coords = torch.stack([n_coords, ca_coords, c_coords], dim=1)
-    #     return coords
-
-    # def get_full_coords(self, coords):
-    #     #get full coords
-    #     N, CA, C = [x.squeeze(-2) for x in coords.chunk(3, dim=-2)]
-    #     # Infer CB coordinates.
-    #     b = CA - N
-    #     c = C - CA
-    #     a = b.cross(c, dim=-1)
-    #     CB = -0.58273431 * a + 0.56802827 * b - 0.54067466 * c + CA
-        
-    #     O = place_fourth_atom(torch.roll(N, -1, 0),
-    #                                     CA, C,
-    #                                     torch.tensor(1.231),
-    #                                     torch.tensor(2.108),
-    #                                     torch.tensor(-3.142))
-    #     full_coords = torch.stack(
-    #         [N, CA, C, O, CB], dim=1)
-        
-    #     return full_coords
-
 
 if __name__ == '__main__':
     name = 'pinder'
@@ -175,7 +151,8 @@ if __name__ == '__main__':
     count = 0
     for batch in tqdm(dataloader):
         count += 1
-        if count > 100:
-            break
+        # if count > 100:
+        #     break
 
     print(len(dataset.fail_list), len(dataloader))
+
