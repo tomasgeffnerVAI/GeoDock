@@ -12,13 +12,56 @@ from tqdm import tqdm
 from torch.utils import data
 from einops import rearrange, repeat
 from torch_geometric.data import HeteroData
+from Bio import pairwise2
+from Bio.pairwise2 import format_alignment
 
 import sys
-# sys.path.append("/home/tomasgeffner/GeoDock/geodock/utils")
 sys.path.append("/home/tomasgeffner/GeoDock")
 from geodock.utils.esm_utils_struct import load_coords
-from geodock.utils.pdb import save_PDB, place_fourth_atom 
+from geodock.utils.pdb import save_PDB, place_fourth_atom
+# from geodock.utils.bio_align import align_seqs
 
+
+
+def get_holo_pdb(pdb_file):
+    # Gets the pdb of the correct holo
+    if "alt" not in pdb_file:
+        root_holo = "/".join(pdb_file.split("/")[:-2])
+    else:
+        root_holo = "/".join(pdb_file.split("/")[:-3])
+    _id = pdb_file[-6:]
+    assert _id in ["_R.pdb", "_L.pdb"], "No R or L"
+    
+    p_holo = os.path.join(root_holo, "holo")
+    files_holo = [os.path.join(p_holo, f) for f in os.listdir(p_holo) if os.path.isfile(os.path.join(p_holo, f)) and _id in f]
+    assert len(files_holo) == 1
+    
+    return files_holo[0]
+
+
+
+def align_to_holo(pdb_file, seq):
+    holo_pdb = get_holo_pdb(pdb_file)
+    coords_holo, seq_holo, chain_lens_holo = load_coords(holo_pdb, chain=None)
+    assert coords_holo.shape[0] == sum(chain_lens_holo), f"Chains and coords different lens, {coords_holo.shape[0]}, {len(seq_holo)} - {len(chain_lens_holo)}, {sum(chain_lens_holo)}\n{holo_pdb}"
+
+    print(len(seq), len(seq_holo))
+    print(pdb_file)
+    
+
+
+def align_seqs(seq_holo, seq_other):
+    # sequence1, sequence2, match score, mismatch penalty, gap opening penalty, gap extension penalty
+    alignments = pairwise2.align.globalms(seq_holo, seq_other, 2, -1, -5, -5)
+    sorted_alignments = sorted(alignments, key=lambda x: x[2], reverse=True)
+
+    # Get the best alignment
+    best_alignment = sorted_alignments[0]
+
+    # Extract the aligned sequences from the best alignment
+    aligned_seq_holo, aligned_seq_other = best_alignment[0], best_alignment[1]
+
+    return aligned_seq_holo, aligned_seq_other
 
 
 
@@ -57,16 +100,27 @@ class GeoDockDataset(data.Dataset):
         if self.dataset == 'pinder':
             pdb_file = self.file_list[idx]
             mode = pdb_file.split("/")[-2]
+            
             full_complex = False
             if mode not in ["apo", "holo", "predicted", "alt"]:
                 full_complex = True
+
+            apo_or_pred = False
+            if mode in ["apo", "predicted", "alt"]:
+                apo_or_pred = True
+
             # coords, seq = load_coords(pdb_file, chain=None)
             try:
                 # This line is sometimes problematic leads to some failures
                 coords, seq, chain_lens = load_coords(pdb_file, chain=None)
                 assert coords.shape[0] == sum(chain_lens), f"Chains and coords different lens, {coords.shape[0]}, {len(seq)} - {len(chain_lens)}, {sum(chain_lens)}\n{pdb_file}"
+
                 if full_complex:
                     assert len(chain_lens) == 2, "Complex should have two chains"
+                
+                if apo_or_pred and not full_complex:
+                    # Load corresponding holo
+                    seq_align = align_to_holo(pdb_file, seq)
 
                 # Found non standard
                 # "CSO" -> "CYS" 
@@ -114,7 +168,7 @@ class GeoDockDataset(data.Dataset):
             data.name = pdb_file
             assert pdb_file[-4:] == ".pdb"
             out_name = pdb_file[:-4] + ".pt"
-            torch.save(data, out_name)
+            # torch.save(data, out_name)
 
             if full_complex:
                 if "test" in pdb_file:
@@ -162,17 +216,6 @@ if __name__ == '__main__':
         # if count > 100:
         #     break
 
-    # Generate the text files
-    root = "/home/tomasgeffner/pinder_copy/"
-    # need to check that for each correctly generated complex we have two holos, that's it
-    root_train = "/home/tomasgeffner/pinder_copy/splits_v2/train/"
-    clean_list = check_validity(complexes_good_train, root_train)
-
-
-
-def check_validity(list_complexes, root):
-    for pdb_file in list_complexes:
-        print(pdb_file)
 
 
 # "structure has multiple atoms with the same name" comes from
