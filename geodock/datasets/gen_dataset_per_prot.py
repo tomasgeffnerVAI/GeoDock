@@ -162,10 +162,17 @@ if __name__ == '__main__':
         # if count > 100:
         #     break
 
-    print(len(dataset.fail_list), len(dataloader))
+    # Generate the text files
+    root = "/home/tomasgeffner/pinder_copy/"
+    # need to check that for each correctly generated complex we have two holos, that's it
+    root_train = "/home/tomasgeffner/pinder_copy/splits_v2/train/"
+    clean_list = check_validity(complexes_good_train, root_train)
 
-    print(dataset.complexes_good_test)
 
+
+def check_validity(list_complexes, root):
+    for pdb_file in list_complexes:
+        print(pdb_file)
 
 
 # "structure has multiple atoms with the same name" comes from
