@@ -14,7 +14,6 @@ from einops import rearrange, repeat
 from torch_geometric.data import HeteroData
 from Bio import pairwise2
 from Bio.pairwise2 import format_alignment
-from geodock.datasets.helpers import get_item_from_pdbs_n_seq
 
 
 import sys
