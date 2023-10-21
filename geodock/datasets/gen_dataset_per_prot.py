@@ -14,13 +14,16 @@ from einops import rearrange, repeat
 from torch_geometric.data import HeteroData
 from Bio import pairwise2
 from Bio.pairwise2 import format_alignment
+from geodock.datasets.helpers import get_item_from_pdbs_n_seq
+
 
 import sys
+
 sys.path.append("/home/tomasgeffner/GeoDock")
 from geodock.utils.esm_utils_struct import load_coords
 from geodock.utils.pdb import save_PDB, place_fourth_atom
-# from geodock.utils.bio_align import align_seqs
 
+# from geodock.utils.bio_align import align_seqs
 
 
 # def get_holo_pdb(pdb_file):
@@ -31,13 +34,12 @@ from geodock.utils.pdb import save_PDB, place_fourth_atom
 #         root_holo = "/".join(pdb_file.split("/")[:-3])
 #     _id = pdb_file[-6:]
 #     assert _id in ["_R.pdb", "_L.pdb"], "No R or L"
-    
+
 #     p_holo = os.path.join(root_holo, "holo")
 #     files_holo = [os.path.join(p_holo, f) for f in os.listdir(p_holo) if os.path.isfile(os.path.join(p_holo, f)) and _id in f]
 #     assert len(files_holo) == 1
-    
-#     return files_holo[0]
 
+#     return files_holo[0]
 
 
 # def align_to_holo(pdb_file, seq):
@@ -47,7 +49,6 @@ from geodock.utils.pdb import save_PDB, place_fourth_atom
 
 #     print(len(seq), len(seq_holo))
 #     print(pdb_file)
-    
 
 
 # def align_seqs(seq_holo, seq_other):
@@ -64,15 +65,13 @@ from geodock.utils.pdb import save_PDB, place_fourth_atom
 #     return aligned_seq_holo, aligned_seq_other
 
 
-
-
 class GeoDockDataset(data.Dataset):
     def __init__(
-        self, 
-        dataset: str = 'pinder',
-        device: str = 'cuda',
+        self,
+        dataset: str = "pinder",
+        device: str = "cuda",
     ):
-        if dataset == 'pinder':
+        if dataset == "pinder":
             self.data_dir = "/home/tomasgeffner/pinder_copy/splits_v2/"
 
             file_list = []
@@ -81,7 +80,7 @@ class GeoDockDataset(data.Dataset):
                     if ".pdb" in f:
                         file_list.append(os.path.join(root, f))
             self.file_list = file_list
-        
+
         self.dataset = dataset
         self.device = device
         self.fail_list = []
@@ -90,17 +89,18 @@ class GeoDockDataset(data.Dataset):
 
         # Load esm
         # This to download: model, alphabet = torch.hub.load("facebookresearch/esm:main", "esm2_t33_650M_UR50D")
-        esm_model, alphabet = esm.pretrained.load_model_and_alphabet('/home/tomasgeffner/.cache/torch/hub/checkpoints/esm2_t33_650M_UR50D.pt')
+        _, alphabet = esm.pretrained.load_model_and_alphabet(
+            "/home/tomasgeffner/.cache/torch/hub/checkpoints/esm2_t33_650M_UR50D.pt"
+        )
         self.batch_converter = alphabet.get_batch_converter()
-        self.esm_model = esm_model.to(device).eval()
 
     def __getitem__(self, idx: int):
         fail = False
 
-        if self.dataset == 'pinder':
+        if self.dataset == "pinder":
             pdb_file = self.file_list[idx]
             mode = pdb_file.split("/")[-2]
-            
+
             full_complex = False
             if mode not in ["apo", "holo", "predicted", "alt"]:
                 full_complex = True
@@ -113,17 +113,19 @@ class GeoDockDataset(data.Dataset):
             try:
                 # This line is sometimes problematic leads to some failures
                 coords, seq, chain_lens = load_coords(pdb_file, chain=None)
-                assert coords.shape[0] == sum(chain_lens), f"Chains and coords different lens, {coords.shape[0]}, {len(seq)} - {len(chain_lens)}, {sum(chain_lens)}\n{pdb_file}"
+                assert coords.shape[0] == sum(
+                    chain_lens
+                ), f"Chains and coords different lens, {coords.shape[0]}, {len(seq)} - {len(chain_lens)}, {sum(chain_lens)}\n{pdb_file}"
 
                 if full_complex:
                     assert len(chain_lens) == 2, "Complex should have two chains"
-                
+
                 # if apo_or_pred and not full_complex:
                 #     # Load corresponding holo
                 #     seq_align = align_to_holo(pdb_file, seq)
 
                 # Found non standard
-                # "CSO" -> "CYS" 
+                # "CSO" -> "CYS"
                 # "SEP" -> "SER"
                 # "TPO" -> "THR"
                 # "MLY" -> "LYS"
@@ -134,7 +136,7 @@ class GeoDockDataset(data.Dataset):
                 print(pdb_file)
                 print(e)
                 self.fail_list.append(pdb_file)
-            
+
         if not fail:
             coords = torch.nan_to_num(torch.from_numpy(coords))
 
@@ -144,26 +146,25 @@ class GeoDockDataset(data.Dataset):
             # If single structure
             if not full_complex:
                 data = HeteroData()
-                
+
                 esm_rep = self.get_esm_rep(seq)
 
-                data['prot'].x = esm_rep
-                data['prot'].pos = coords
-                data['prot'].seq = seq
-            
+                data["prot"].x = esm_rep
+                data["prot"].pos = coords
+                data["prot"].seq = seq
+
             else:
                 data = HeteroData()
 
                 split = chain_lens[0]
 
-                data['receptor'].x = None
-                data['receptor'].pos = coords[:split, :, :]
-                data['receptor'].seq = seq[:split]
+                data["receptor"].x = None
+                data["receptor"].pos = coords[:split, :, :]
+                data["receptor"].seq = seq[:split]
 
-                data['ligand'].x = None
-                data['ligand'].pos = coords[split:, :, :]
-                data['ligand'].seq = seq[split:]
-
+                data["ligand"].x = None
+                data["ligand"].pos = coords[split:, :, :]
+                data["ligand"].seq = seq[split:]
 
             data.name = pdb_file
             assert pdb_file[-4:] == ".pdb"
@@ -177,9 +178,8 @@ class GeoDockDataset(data.Dataset):
                     self.complexes_good_train.append(pdb_file.split("/")[-1][:-4])
 
             return coords
-        
-        return torch.ones(3)
 
+        return torch.ones(3)
 
     def __len__(self):
         return len(self.file_list)
@@ -188,19 +188,17 @@ class GeoDockDataset(data.Dataset):
         # Use ESM-1b format.
         # The length of tokens is:
         # L (sequence length) + 2 (start and end tokens)
-        seq = [
-            ("seq", seq_prim)
-        ]
-        out = self.batch_converter(seq)
-        with torch.no_grad():
-            results = self.esm_model(out[-1].to(self.device), repr_layers = [33])
-            rep = results["representations"][33].cpu()
-        
-        return rep[0, 1:-1, :]
+        seq = [("seq", seq_prim)]
+        return self.batch_converter(seq)
+        # with torch.no_grad():
+        #     results = self.esm_model(out[-1].to(self.device), repr_layers=[33])
+        #     rep = results["representations"][33].cpu()
+
+        # return rep[0, 1:-1, :]
 
 
-if __name__ == '__main__':
-    name = 'pinder'
+if __name__ == "__main__":
+    name = "pinder"
     # name = 'dips_test'
 
     dataset = GeoDockDataset(
@@ -215,7 +213,6 @@ if __name__ == '__main__':
         count += 1
         # if count > 100:
         #     break
-
 
 
 # "structure has multiple atoms with the same name" comes from
