@@ -178,6 +178,7 @@ def extract_pdb_seq_by_chain(
         pdbseqs.append(pdbseq)
         residueLists.append(residueList)
         chains.append(chain)
+    #print("hello", model)
     return pdbseqs, residueLists, chains
 
 
@@ -193,8 +194,10 @@ def extract_pdb_seq_from_pdb_file(
     :return: lists of : pdbseqs, residueLists, chains from each
     chain in input pdb file
     """
+    # print(pdbfile, chain_id)
     name = default(name, os.path.basename(pdbfile)[:-4])
     structure = get_structure(pdbfile=pdbfile, name=name)
+    #print(len(structure))
     return extract_pdb_seq_by_chain(structure, chain_id=chain_id)
 
 
@@ -375,6 +378,7 @@ def map_seq_to_pdb(
             bestChain = chain
 
     if minMisMatches > maxMisMatches:
+        # print("Hola")
         print(
             f"ERROR: there are  {minMisMatches} mismatches between"
             f" the query sequence and PDB file: {pdbfile}\n"
@@ -383,6 +387,7 @@ def map_seq_to_pdb(
         return None, None, None, None, None, None
 
     if maxMatches < min(30.0, minMatchRatio * len(sequence)):
+        # print("Chau")
         print(
             "ERROR: there are only  {maxMatches} matches on query sequence, "
             f"less than  {minMatchRatio} of its length from PDB file: {pdbfile}"
@@ -463,6 +468,7 @@ def extract_coords_from_seq_n_pdb(
         num_matches,
     ) = out
     if seq2pdb_mapping is None:
+        # print("Yes")
         return None, None, None, None, None
     residueList = list(residueList)
     atom_coordinates = extract_coords_by_mapping(
@@ -514,6 +520,7 @@ def extract_atom_coords_n_mask_tensors(
 
     atom_coords, _, numMisMatches, *_ = out
     atom_mask = None
+    #print(atom_coords is None)
     if atom_coords is not None:
         if numMisMatches > 5:
             print(
@@ -571,7 +578,7 @@ def get_item_from_pdbs_n_seq(
     conformations (native data).
     """
     decoy_chain_ids = default(decoy_chain_ids, [None] * len(decoy_pdb_paths))
-    target_chain_ids = default(target_chain_ids, [None] * len(decoy_pdb_paths))
+    target_chain_ids = default(target_chain_ids, [None] * len(target_pdb_paths)) # check!
     batch = dict(
         metadata=dict(
             atom_tys=list(atom_tys),
@@ -588,7 +595,7 @@ def get_item_from_pdbs_n_seq(
         decoy_chain_ids,
         target_chain_ids,
     ):
-        seq = safe_load_sequence(seq_path, decoy_pdb, chain_id=decoy_cid)
+        seq = safe_load_sequence(seq_path, decoy_pdb, chain_id=decoy_cid) # check! which sequence
         decoy_data = append_chain_to_data(
             decoy_data,
             pdb_path=decoy_pdb,
@@ -632,6 +639,8 @@ def append_chain_to_data(
     )
     seq_encoding = torch.tensor([pc.AA_TO_INDEX[x] for x in seq])
     canonical_mask = aa_to_canonical_atom_mask(atom_tys)[seq_encoding]
+
+    print(mask is None, canonical_mask is None)
     atom_mask = mask & canonical_mask
     ca_crds = repeat(
         crds[:, min(1, len(atom_tys)), :],
@@ -679,7 +688,9 @@ def safe_load_sequence(
     if exists(seq_path):
         pdbseqs = [load_fasta_file(seq_path)]
     else:
+        # print(pdb_path)
         pdbseqs, *_ = extract_pdb_seq_from_pdb_file(pdb_path, chain_id=chain_id)
+        # print(pdbseqs)
     if len(pdbseqs) > 1 and not exists(chain_id):
         print(f"[WARNING]: Multiple chains found for pdb: {pdb_path}")
     return pdbseqs[0]

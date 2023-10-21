@@ -58,27 +58,21 @@ class GeoDockDataset(data.Dataset):
     def get_decoy_receptor_ligand_pdbs(self, structure_root):
         # return pdb paths for receptor and ligand chain
         source_list = ['holo', 'apo/', 'apo/alt/', 'predicted/'] 
-        extension=["_L.pdb","_R.pdb"]
+        extension=["_R.pdb","_L.pdb"]
         data_paths = dict()
-
         for ext in extension:
             random.shuffle(source_list)
-
             for element in source_list:
-                # Construct path
-                file_path = os.path.join(structure_root, self._id, element)
-                #print("Path", file_path)
-                files_in_directory = os.listdir(structure_root)
-                #print("Files in path", files_in_directory)
+                file_path = os.path.join(structure_root, element)
+                #print(file_path)
 
+                files_in_directory = os.listdir(file_path)
                 # check if file exists
                 matching_files = [file for file in files_in_directory if file.endswith(ext)]
-                #
                 if matching_files:
                     #print("matched file", matching_files)
                     # Load the first matching file (?) -> apo/alt is issue
                     data_paths[ext] = os.path.join(file_path, matching_files[0])
-
         return data_paths["_R.pdb"], data_paths["_L.pdb"]
 
 
@@ -96,9 +90,12 @@ class GeoDockDataset(data.Dataset):
 
         # load example -- TODO: get pred, apo, and holo and choose which to use for aln
         structure_root = os.path.join(self.data_dir, _id)
-        target_pdb = next(
-            filter(lambda x: x.endswith("pdb"), os.listdir(structure_root))
-        )
+        #target_pdb = next(
+        #    filter(lambda x: x.endswith("pdb"), os.listdir(structure_root))
+        #)
+        
+        target_pdb = os.path.join(structure_root, _id +'.pdb')
+        #print(target_pdb)
         decoy_receptor_pdb, decoy_ligand_pdb = self.get_decoy_receptor_ligand_pdbs(
             structure_root
         )
@@ -109,8 +106,8 @@ class GeoDockDataset(data.Dataset):
             target_pdb_paths=[target_pdb, target_pdb],
             # TODO: make atom types in same order as geodock!
             atom_tys=tuple(pc.ALL_ATOMS),
-            decoy_chain_ids=["A", "B"],  # TODO: might be B, A??
-            target_chain_ids=["A", "B"],
+            decoy_chain_ids=["R", "L"],  # TODO: might be B, A??
+            target_chain_ids=["a", "b"],
         )
 
         residue1_mask = (
@@ -130,21 +127,20 @@ class GeoDockDataset(data.Dataset):
             [x for x, m in zip(data["target"]["sequence"], residue1_mask) if m]
         )
 
-        label_coords = torch.cat([coords1_true, coords2_true], dim=0)
-        label_rotat = self.get_rotat(label_coords)
-        label_trans = self.get_trans(label_coords)
+        #### generate input ####
+        decoy_coords = torch.cat([coords1_decoy, coords2_decoy], dim=0)
 
         # Pair embedding
-        input_pairs = self.get_pair_mats(label_coords, len(seq1))
+        input_pairs = self.get_pair_mats(decoy_coords, len(seq1))
 
         # Contact embedding
         if self.is_training:
             input_contact = self.get_pair_contact(
-                label_coords, len(seq1), count=random.randint(0, 3)
+                decoy_coords, len(seq1), count=random.randint(0, 3)
             )
         else:
             input_contact = self.get_pair_contact(
-                label_coords, len(seq1), count=self.count
+                decoy_coords, len(seq1), count=self.count
             )
 
         pair_embeddings = torch.cat([input_pairs, input_contact], dim=-1)
@@ -157,6 +153,12 @@ class GeoDockDataset(data.Dataset):
             assert positional_embeddings.size(1) == pair_embeddings.size(1)
         except:
             print(_id)
+
+        #### generate target ####
+        label_coords = torch.cat([coords1_true, coords2_true], dim=0)
+        label_rotat = self.get_rotat(label_coords)
+        label_trans = self.get_trans(label_coords)
+
 
         if self.out_pdb:
             print(_id)

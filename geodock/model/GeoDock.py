@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 from torch.utils import data
 from einops import repeat, rearrange
-from geodock.datasets.geodock_dataset import GeoDockDataset
+from geodock.datasets.matt_dataset import GeoDockDataset
 from geodock.model.interface import GeoDockInput, GeoDockOutput
 from geodock.model.modules.iterative_transformer import IterativeTransformer
 from geodock.utils.loss import GeoDockLoss
