@@ -11,17 +11,17 @@ import torch.nn.functional as F
 from tqdm import tqdm
 from torch.utils import data
 from einops import rearrange, repeat
-# from src.utils.pdb import save_PDB, place_fourth_atom 
-# from geodock.utils.pdb import save_PDB, place_fourth_atom 
 from torch_geometric.data import HeteroData
-# from esm.inverse_folding.util import load_coords  # This was the original one that fails for "CSO"
-# from geodock.utils.esm_utils_struct import load_coords  # I don't get why this does not work wtffff
 
 import sys
 # sys.path.append("/home/tomasgeffner/GeoDock/geodock/utils")
 sys.path.append("/home/tomasgeffner/GeoDock")
-from geodock.utils.esm_utils_struct import load_coords 
+from geodock.utils.esm_utils_struct import load_coords
 from geodock.utils.pdb import save_PDB, place_fourth_atom 
+
+
+
+
 
 class GeoDockDataset(data.Dataset):
     def __init__(
@@ -29,15 +29,8 @@ class GeoDockDataset(data.Dataset):
         dataset: str = 'pinder',
         device: str = 'cuda',
     ):
-        # if dataset == 'dips_test':
-        #     self.data_dir = "/home/tomasgeffner/GeoDock/geodock/data/test"
-        #     self.file_list = [i[:-21] for i in os.listdir(self.data_dir) if i[-3:] == 'pdb'] 
-        #     self.file_list = list(dict.fromkeys(self.file_list))  # remove duplicates
-        #     print(self.file_list)
-        #     exit()
-
         if dataset == 'pinder':
-            self.data_dir = "/home/tomasgeffner/pinder_copy"
+            self.data_dir = "/home/tomasgeffner/pinder_copy/splits_v2/"
 
             file_list = []
             for root, dirs, files in os.walk(self.data_dir):
@@ -49,6 +42,8 @@ class GeoDockDataset(data.Dataset):
         self.dataset = dataset
         self.device = device
         self.fail_list = []
+        self.complexes_good_train = []
+        self.complexes_good_test = []
 
         # Load esm
         # This to download: model, alphabet = torch.hub.load("facebookresearch/esm:main", "esm2_t33_650M_UR50D")
@@ -57,46 +52,28 @@ class GeoDockDataset(data.Dataset):
         self.esm_model = esm_model.to(device).eval()
 
     def __getitem__(self, idx: int):
-        # if self.dataset == 'dips_test':
-        #     _id = self.file_list[idx] 
-        #     pdb_file_1 = os.path.join(self.data_dir, _id+".dill_r_b_COMPLEX.pdb")
-        #     pdb_file_2 = os.path.join(self.data_dir, _id+".dill_l_b_COMPLEX.pdb")
-        #     coords1, seq1 = load_coords(pdb_file_1, chain=None)
-        #     coords2, seq2 = load_coords(pdb_file_2, chain=None)
-        #     coords1 = torch.nan_to_num(torch.from_numpy(coords1))
-        #     coords2 = torch.nan_to_num(torch.from_numpy(coords2))
-        
         fail = False
 
         if self.dataset == 'pinder':
             pdb_file = self.file_list[idx]
             mode = pdb_file.split("/")[-2]
-            do_esm = True
-            if mode not in ["apo", "holo", "predicted"]:
-                do_esm = False
+            full_complex = False
+            if mode not in ["apo", "holo", "predicted", "alt"]:
+                full_complex = True
             # coords, seq = load_coords(pdb_file, chain=None)
             try:
                 # This line is sometimes problematic leads to some failures
-                coords, seq = load_coords(pdb_file, chain=None)
-                # "structure has multiple atoms with the same name" comes from
-                #   https://github.com/facebookresearch/esm/blob/2b369911bb5b4b0dda914521b9475cad1656b2ac/esm/inverse_folding/util.py#L105C35-L105C35
-                # For isntance, for this file /home/tomasgeffner/pinder_copy/splits/test/1jma__A1_Q92956--1jma__B1_P57083/apo/1jma__B1_P57083_L.pdb
+                coords, seq, chain_lens = load_coords(pdb_file, chain=None)
+                assert coords.shape[0] == sum(chain_lens), f"Chains and coords different lens, {coords.shape[0]}, {len(seq)} - {len(chain_lens)}, {sum(chain_lens)}\n{pdb_file}"
+                if full_complex:
+                    assert len(chain_lens) == 2, "Complex should have two chains"
 
-                # Update, this has to do with broken APOs, and a few others...
-
-                # Other error is "CSO" is a key error comes from ProteinSequence._dict_3to1[symbol.upper()] (I think symbol.upper is "CSO") comes from
-                #   https://github.com/facebookresearch/esm/blob/2b369911bb5b4b0dda914521b9475cad1656b2ac/esm/inverse_folding/util.py#L73C1-L73C1
-                # For isntance, for this file /home/tomasgeffner/pinder_copy/splits/test/2es4__A1_P0DUB8--2es4__B1_Q05490/2es4__A1_P0DUB8--2es4__B1_Q05490.pdb
-
-                # This has to do with non-standard aa
-                # Fixed by changing the function used to transform non standard to standard variants
-
-                # Found
+                # Found non standard
                 # "CSO" -> "CYS" 
                 # "SEP" -> "SER"
                 # "TPO" -> "THR"
                 # "MLY" -> "LYS"
-            
+
             except Exception as e:
                 fail = True
                 print("fail", len(self.fail_list))
@@ -109,23 +86,46 @@ class GeoDockDataset(data.Dataset):
 
             # ESM embedding
             esm_rep = None
-            if do_esm:
+
+            # If single structure
+            if not full_complex:
+                data = HeteroData()
+                
                 esm_rep = self.get_esm_rep(seq)
 
-            # save data to a hetero graph 
-            data = HeteroData()
+                data['prot'].x = esm_rep
+                data['prot'].pos = coords
+                data['prot'].seq = seq
+            
+            else:
+                data = HeteroData()
 
-            data['prot'].x = esm_rep
-            data['prot'].pos = coords
-            data['prot'].seq = seq
+                split = chain_lens[0]
+
+                data['receptor'].x = None
+                data['receptor'].pos = coords[:split, :, :]
+                data['receptor'].seq = seq[:split]
+
+                data['ligand'].x = None
+                data['ligand'].pos = coords[split:, :, :]
+                data['ligand'].seq = seq[split:]
+
+
             data.name = pdb_file
             assert pdb_file[-4:] == ".pdb"
             out_name = pdb_file[:-4] + ".pt"
             torch.save(data, out_name)
 
+            if full_complex:
+                if "test" in pdb_file:
+                    self.complexes_good_test.append(pdb_file.split("/")[-1][:-4])
+                elif "train" in pdb_file:
+                    self.complexes_good_train.append(pdb_file.split("/")[-1][:-4])
+
             return coords
         
         return torch.ones(3)
+
 
     def __len__(self):
         return len(self.file_list)
@@ -164,3 +164,19 @@ if __name__ == '__main__':
 
     print(len(dataset.fail_list), len(dataloader))
 
+    print(dataset.complexes_good_test)
+
+
+
+# "structure has multiple atoms with the same name" comes from
+#   https://github.com/facebookresearch/esm/blob/2b369911bb5b4b0dda914521b9475cad1656b2ac/esm/inverse_folding/util.py#L105C35-L105C35
+# For isntance, for this file /home/tomasgeffner/pinder_copy/splits/test/1jma__A1_Q92956--1jma__B1_P57083/apo/1jma__B1_P57083_L.pdb
+
+# Update, this has to do with broken APOs, and a few others...
+
+# Other error is "CSO" is a key error comes from ProteinSequence._dict_3to1[symbol.upper()] (I think symbol.upper is "CSO") comes from
+#   https://github.com/facebookresearch/esm/blob/2b369911bb5b4b0dda914521b9475cad1656b2ac/esm/inverse_folding/util.py#L73C1-L73C1
+# For isntance, for this file /home/tomasgeffner/pinder_copy/splits/test/2es4__A1_P0DUB8--2es4__B1_Q05490/2es4__A1_P0DUB8--2es4__B1_Q05490.pdb
+
+# This has to do with non-standard aa
+# Fixed by changing the function used to transform non standard to standard variants
