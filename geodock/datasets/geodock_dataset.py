@@ -7,12 +7,14 @@ from tqdm import tqdm
 from einops import repeat
 from geodock.utils.pdb import save_PDB, place_fourth_atom 
 from geodock.utils.coords6d import get_coords6d
+from Bio.pairwise2 import format_alignment
+import numpy as np
 
 
 class GeoDockDataset(data.Dataset):
     def __init__(
         self, 
-        dataset: str = 'dips_train_500',
+        dataset: str = 'pinder_toyexample_train', # DQ why here and below?
         out_pdb: bool = False,
         out_png: bool = False,
         is_training: bool = True,
@@ -30,142 +32,138 @@ class GeoDockDataset(data.Dataset):
         self.count = count
         self.use_Cb = use_Cb
 
-        if dataset == 'dips_train_0.3':
-            self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/dips/pt_files"
-            self.data_list = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/dips_equidock/train_list_0.3.txt" 
+        if dataset == 'pinder_toyexample_train':
+            self.data_dir = "/home/tomasgeffner/pinder_copy/splits_v2/train"
+            self.data_list = "/home/tomasgeffner/pinder_copy/train_processed.txt"
             with open(self.data_list, 'r') as f:
                 lines = f.readlines()
             self.file_list = [line.strip() for line in lines] 
 
-        if dataset == 'dips_val_0.3':
-            self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/dips/pt_files"
-            self.data_list = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/dips_equidock/val_list_0.3.txt" 
+        elif dataset == 'pinder_toyexample_test':
+            self.data_dir = "/home/tomasgeffner/pinder_copy/splits_v2/test"
+            self.data_list = "/home/tomasgeffner/pinder_copy/test_processed.txt" 
             with open(self.data_list, 'r') as f:
                 lines = f.readlines()
-            self.file_list = [line.strip() for line in lines] 
-        if dataset == 'dips_train_0.4':
-            self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/dips/pt_files"
-            self.data_list = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/dips_equidock/train_list_0.4.txt" 
-            with open(self.data_list, 'r') as f:
-                lines = f.readlines()
-            self.file_list = [line.strip() for line in lines] 
-
-        if dataset == 'dips_val_0.4':
-            self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/dips/pt_files"
-            self.data_list = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/dips_equidock/val_list_0.4.txt" 
-            with open(self.data_list, 'r') as f:
-                lines = f.readlines()
-            self.file_list = [line.strip() for line in lines] 
-
-        if dataset == 'dips_train':
-            self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/dips/pt_files"
-            self.data_list = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/dips_equidock/train_list_lt_50.txt" 
-            with open(self.data_list, 'r') as f:
-                lines = f.readlines()
-            self.file_list = [line.strip() for line in lines] 
-
-        if dataset == 'dips_val':
-            self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/dips/pt_files"
-            self.data_list = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/dips_equidock/val_list_lt_50.txt" 
-            with open(self.data_list, 'r') as f:
-                lines = f.readlines()
-            self.file_list = [line.strip() for line in lines] 
-
-        if dataset == 'dips_train_500':
-            self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/dips/pt_files"
-            self.data_list = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/dips_equidock/train_list_500.txt" 
-            with open(self.data_list, 'r') as f:
-                lines = f.readlines()
-            self.file_list = [line.strip() for line in lines] 
-
-        if dataset == 'dips_val_500':
-            self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/dips/pt_files"
-            self.data_list = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/dips_equidock/val_list_500.txt" 
-            with open(self.data_list, 'r') as f:
-                lines = f.readlines()
-            self.file_list = [line.strip() for line in lines] 
-
-        if dataset == 'dips_test_500':
-            self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/dips/pt_files"
-            self.data_list = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/dips_equidock/test_list_500.txt" 
-            with open(self.data_list, 'r') as f:
-                lines = f.readlines()
-            self.file_list = [line.strip() for line in lines] 
+            self.file_list = [line.strip() for line in lines]
         
-        elif dataset == 'dips_test':
-            self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/pts/dips_test"
-            self.file_list = [i[:-3] for i in os.listdir(self.data_dir)] 
-
-        elif dataset == 'db5_train_bound':
-            self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/pts/db5_bound"
-            self.data_list = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/db5.5/train_list.txt"
-            with open(self.data_list, 'r') as f:
-                lines = f.readlines()
-            self.file_list = [line.strip() for line in lines] 
-
-        elif dataset == 'db5_val_bound':
-            self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/pts/db5_bound"
-            self.data_list = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/db5.5/val_list.txt"
-            with open(self.data_list, 'r') as f:
-                lines = f.readlines()
-            self.file_list = [line.strip() for line in lines] 
-
-        elif dataset == 'db5_test_bound':
-            self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/pts/db5_bound"
-            self.data_list = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/db5.5/bound_list.txt"
-            with open(self.data_list, 'r') as f:
-                lines = f.readlines()
-            self.file_list = [line.strip() for line in lines] 
-
-        elif dataset == 'db5_train_unbound':
-            self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/pts/db5_unbound"
-            self.data_list = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/db5.5/train_list.txt"
-            with open(self.data_list, 'r') as f:
-                lines = f.readlines()
-            self.file_list = [line.strip() for line in lines] 
-
-        elif dataset == 'db5_val_unbound':
-            self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/pts/db5_unbound"
-            self.data_list = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/db5.5/val_list.txt"
-            with open(self.data_list, 'r') as f:
-                lines = f.readlines()
-            self.file_list = [line.strip() for line in lines] 
-
-        elif dataset == 'db5_test_flexible_unbound':
-            self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/pts/db5_unbound_flexible"
-            self.data_list = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/db5.5/flexible_list.txt"
-            with open(self.data_list, 'r') as f:
-                lines = f.readlines()
-            self.file_list = [line.strip() for line in lines] 
-
-        elif dataset == 'db5_test_flexible_bound':
-            self.data_dir = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/pts/db5_bound_flexible"
-            self.data_list = "/home/lchu11/scr4_jgray21/lchu11/my_repos/Docking-dev/data/db5.5/unbound_list.txt"
-            with open(self.data_list, 'r') as f:
-                lines = f.readlines()
-            self.file_list = [line.strip() for line in lines] 
-
 
     def __getitem__(self, idx: int):
-        if self.dataset[:4] == 'dips' and self.dataset != 'dips_test':
+#        if self.dataset == 'pinder_toyexample_train' and self.dataset != 'pinder_toyexample_test': # DQ why?
             # Get info from file_list 
-            _id = self.file_list[idx]
-            split_string = _id.split('/')
-            _id = split_string[0] + '_' + split_string[1].rsplit('.', 1)[0]
-            data = torch.load(os.path.join(self.data_dir, _id+'.pt'))
-
+        _id = self.file_list[idx]
+        
+        ########### Load target ground truth complex/holo data ###########
+        path_complex = os.path.join(self.data_dir, _id, _id+'.pt')
+        if os.path.exists(path_complex):
+            data_complex = torch.load(path_complex)
         else:
-            data = torch.load(os.path.join(self.data_dir, self.file_list[idx]+'.pt'))
+            print("not good")
 
-        # get from data
-        _id = data.name
-        seq1 = data['receptor'].seq
-        coords1 = data['receptor'].pos
-        protein1_embeddings = data['receptor'].x
-        seq2 = data['ligand'].seq
-        coords2 = data['ligand'].pos
-        protein2_embeddings = data['ligand'].x
+        # Get ground truth complex
+        seq1_true = data_complex['receptor'].seq
+        seq2_true = data_complex['ligand'].seq
+        coords1_true = data_complex['receptor'].pos
+        coords2_true = data_complex['ligand'].pos
 
+
+        ########### Load input R/L ###########
+        # preliminary "random" sample
+        source_list = ['holo']#['apo/', 'apo/alt/', 'holo/', 'predicted/']
+        
+        def find_existing_files(data_dir, source_list):
+            extension=["_L.pt","_R.pt"]
+            data = dict()
+
+            for ext in extension:
+                random.shuffle(source_list)
+
+                for element in source_list:
+                    # Construct path
+                    file_path = os.path.join(self.data_dir, _id, element)
+                    #print("Path", file_path)
+                    files_in_directory = os.listdir(file_path)
+                    #print("Files in path", files_in_directory)
+
+                    # check if file exists
+                    matching_files = [file for file in files_in_directory if file.endswith(ext)]
+                    #
+                    if matching_files:
+                        #print("matched file", matching_files)
+                        # Load the first matching file (?) -> apo/alt is issue
+                        data[ext] = torch.load(os.path.join(file_path, matching_files[0]))
+            #print(_id, data)
+
+            return data["_L.pt"], data["_R.pt"]
+                    #raise IOError(file_path, "it not working")
+                
+            #return "No file"  # If no existing file is found, return None
+
+        data_L, data_R = find_existing_files(self.data_dir, source_list)        
+        
+        
+        # get receptor
+        seq1 = data_R['prot'].seq
+        coords1 = data_R['prot'].pos
+        protein1_embeddings = data_R['prot'].x
+
+        # get ligand
+        seq2 = data_L['prot'].seq
+        coords2 = data_L['prot'].pos
+        protein2_embeddings = data_L['prot'].x
+
+        
+        ########### Align R/L with target R/L ###########
+
+        def align_seqs(seq_true, seq_other):
+            # sequence1, sequence2, match score, mismatch penalty, gap opening penalty, gap extension penalty
+            alignments = pairwise2.align.globalms(seq_true, seq_other, 2, -1, -5, -5)
+            sorted_alignments = sorted(alignments, key=lambda x: x[2], reverse=True)
+            # Get the best alignment
+            best_alignment = sorted_alignments[0]
+            # Extract the aligned sequences from the best alignment
+            aligned_seq_true, aligned_seq_other = best_alignment[0], best_alignment[1]
+
+            # note: i think it's the opposite of what matt uses (i do true for gap)
+            mask_true = ['T' if char == '-' else 'F' for char in aligned_seq_true]
+            mask_other = ['T' if char == '-' else 'F' for char in aligned_seq_other]
+            return mask_true, mask_other
+
+        def expand_tensor_with_gaps(original_tensor, mask):
+            target_length = len(mask)
+            expanded_tensor = np.zeros((target_length, 3, 3))
+
+            # Copy values from the original tensor to empty expanded tensor
+            tensor_index = 0
+            for i in range(target_length):
+                if mask[i] == 'F':
+                    if tensor_index < len(original_tensor):
+                        expanded_tensor[i] = original_tensor[tensor_index]
+                        tensor_index += 1
+            return expanded_tensor
+
+        #is the shape correct here? or just length?
+        if seq1_true.shape[0] != seq1.shape[0]:
+            mask1_true, mask1 = align_seqs(seq1_true, seq1)
+            coords1_true = expand_tensor_with_gaps(coords1_true, mask1_true)
+            coords1 = expand_tensor_with_gaps(coords1, mask1)
+            protein1_embeddings = expand_tensor_with_gaps(protein1_embeddings, mask1)
+
+            #L_m = min(coords1.shape[0], coords1_true.shape[0])
+            #coords1 = coords1[:L_m, :, :]
+            #coords1_true = coords1_true[:L_m, :, :]
+        if seq2_true.shape[0] != seq2.shape[0]:
+            mask2_true, mask2 = align_seqs(seq2_true, seq2)
+            coords2_true = expand_tensor_with_gaps(coords2_true, mask2_true)
+            coords2 = expand_tensor_with_gaps(coords2, mask2)
+            protein2_embeddings = expand_tensor_with_gaps(protein2_embeddings, mask2)
+
+        # if coords2.shape[0] != coords2_true.shape[0]:
+        #     L_m = min(coords2.shape[0], coords2_true.shape[0])
+        #     coords2 = coords2[:L_m, :, :]
+        #     coords2_true = coords2_true[:L_m, :, :]
+
+
+        ########### Crop Length of target and input R/L ###########
         # crop > 500
         if not self.is_testing:
             crop_size = 500
@@ -177,15 +175,18 @@ class GeoDockDataset(data.Dataset):
                         n = random.randint(0, len(seq1)-crop_len)
                         seq1 = seq1[n:n+crop_len]
                         coords1 = coords1[n:n+crop_len]
+                        coords1_true = coords1_true[n:n+crop_len]
                         protein1_embeddings = protein1_embeddings[n:n+crop_len]
                     else:
                         n1 = random.randint(0, len(seq1)-crop_size_per_chain)
                         seq1 = seq1[n1:n1+crop_size_per_chain]
                         coords1 = coords1[n1:n1+crop_size_per_chain]
+                        coords1_true = coords1_true[n1:n1+crop_size_per_chain]
                         protein1_embeddings = protein1_embeddings[n1:n1+crop_size_per_chain]
                         n2 = random.randint(0, len(seq2)-crop_size_per_chain)
                         seq2 = seq2[n2:n2+crop_size_per_chain]
                         coords2 = coords2[n2:n2+crop_size_per_chain]
+                        coords2_true = coords2_true[n2:n2+crop_size_per_chain]
                         protein2_embeddings = protein2_embeddings[n2:n2+crop_size_per_chain]
 
                 elif len(seq2) > len(seq1):
@@ -194,33 +195,38 @@ class GeoDockDataset(data.Dataset):
                         n = random.randint(0, len(seq2)-crop_len)
                         seq2 = seq2[n:n+crop_len]
                         coords2 = coords2[n:n+crop_len]
+                        coords2_true = coords2_true[n:n+crop_len]
                         protein2_embeddings = protein2_embeddings[n:n+crop_len]
                     else:
                         n1 = random.randint(0, len(seq1)-crop_size_per_chain)
                         seq1 = seq1[n1:n1+crop_size_per_chain]
                         coords1 = coords1[n1:n1+crop_size_per_chain]
+                        coords1_true = coords1_true[n1:n1+crop_size_per_chain]
                         protein1_embeddings = protein1_embeddings[n1:n1+crop_size_per_chain]
                         n2 = random.randint(0, len(seq2)-crop_size_per_chain)
                         seq2 = seq2[n2:n2+crop_size_per_chain]
                         coords2 = coords2[n2:n2+crop_size_per_chain]
+                        coords2_true = coords2_true[n2:n2+crop_size_per_chain]
                         protein2_embeddings = protein2_embeddings[n2:n2+crop_size_per_chain]
                 else:
                     n = random.randint(0, len(seq1)-crop_size_per_chain)
                     seq1 = seq1[n:n+crop_size_per_chain]
                     coords1 = coords1[n:n+crop_size_per_chain]
+                    coords1_true = coords1_true[n:n+crop_size_per_chain]
                     protein1_embeddings = protein1_embeddings[n:n+crop_size_per_chain]
                     seq2 = seq2[n:n+crop_size_per_chain]
                     coords2 = coords2[n:n+crop_size_per_chain]
+                    coords2_true = coords2_true[n:n+crop_size_per_chain]
                     protein2_embeddings = protein2_embeddings[n:n+crop_size_per_chain]
 
         try:
             assert len(seq1) == coords1.size(0) == protein1_embeddings.size(0)
             assert len(seq2) == coords2.size(0) == protein2_embeddings.size(0) 
         except:
-            print(_id)
+            print(_id, " Problem with seq==coord==emb length")
         
-        # Get ground truth
-        label_coords = torch.cat([coords1, coords2], dim=0)
+
+        label_coords = torch.cat([coords1_true, coords2_true], dim=0)
         label_rotat = self.get_rotat(label_coords)
         label_trans = self.get_trans(label_coords)
 
@@ -503,7 +509,7 @@ class GeoDockDataset(data.Dataset):
 
 if __name__ == '__main__':
     dataset = GeoDockDataset(
-        dataset='db5_train_bound',
+        dataset='pinder_toyexample_train',
         out_pdb=True,
         out_png=False,
         is_training=False,
