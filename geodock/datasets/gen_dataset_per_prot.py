@@ -23,45 +23,45 @@ from geodock.utils.pdb import save_PDB, place_fourth_atom
 
 
 
-def get_holo_pdb(pdb_file):
-    # Gets the pdb of the correct holo
-    if "alt" not in pdb_file:
-        root_holo = "/".join(pdb_file.split("/")[:-2])
-    else:
-        root_holo = "/".join(pdb_file.split("/")[:-3])
-    _id = pdb_file[-6:]
-    assert _id in ["_R.pdb", "_L.pdb"], "No R or L"
+# def get_holo_pdb(pdb_file):
+#     # Gets the pdb of the correct holo
+#     if "alt" not in pdb_file:
+#         root_holo = "/".join(pdb_file.split("/")[:-2])
+#     else:
+#         root_holo = "/".join(pdb_file.split("/")[:-3])
+#     _id = pdb_file[-6:]
+#     assert _id in ["_R.pdb", "_L.pdb"], "No R or L"
     
-    p_holo = os.path.join(root_holo, "holo")
-    files_holo = [os.path.join(p_holo, f) for f in os.listdir(p_holo) if os.path.isfile(os.path.join(p_holo, f)) and _id in f]
-    assert len(files_holo) == 1
+#     p_holo = os.path.join(root_holo, "holo")
+#     files_holo = [os.path.join(p_holo, f) for f in os.listdir(p_holo) if os.path.isfile(os.path.join(p_holo, f)) and _id in f]
+#     assert len(files_holo) == 1
     
-    return files_holo[0]
+#     return files_holo[0]
 
 
 
-def align_to_holo(pdb_file, seq):
-    holo_pdb = get_holo_pdb(pdb_file)
-    coords_holo, seq_holo, chain_lens_holo = load_coords(holo_pdb, chain=None)
-    assert coords_holo.shape[0] == sum(chain_lens_holo), f"Chains and coords different lens, {coords_holo.shape[0]}, {len(seq_holo)} - {len(chain_lens_holo)}, {sum(chain_lens_holo)}\n{holo_pdb}"
+# def align_to_holo(pdb_file, seq):
+#     holo_pdb = get_holo_pdb(pdb_file)
+#     coords_holo, seq_holo, chain_lens_holo = load_coords(holo_pdb, chain=None)
+#     assert coords_holo.shape[0] == sum(chain_lens_holo), f"Chains and coords different lens, {coords_holo.shape[0]}, {len(seq_holo)} - {len(chain_lens_holo)}, {sum(chain_lens_holo)}\n{holo_pdb}"
 
-    print(len(seq), len(seq_holo))
-    print(pdb_file)
+#     print(len(seq), len(seq_holo))
+#     print(pdb_file)
     
 
 
-def align_seqs(seq_holo, seq_other):
-    # sequence1, sequence2, match score, mismatch penalty, gap opening penalty, gap extension penalty
-    alignments = pairwise2.align.globalms(seq_holo, seq_other, 2, -1, -5, -5)
-    sorted_alignments = sorted(alignments, key=lambda x: x[2], reverse=True)
+# def align_seqs(seq_holo, seq_other):
+#     # sequence1, sequence2, match score, mismatch penalty, gap opening penalty, gap extension penalty
+#     alignments = pairwise2.align.globalms(seq_holo, seq_other, 2, -1, -5, -5)
+#     sorted_alignments = sorted(alignments, key=lambda x: x[2], reverse=True)
 
-    # Get the best alignment
-    best_alignment = sorted_alignments[0]
+#     # Get the best alignment
+#     best_alignment = sorted_alignments[0]
 
-    # Extract the aligned sequences from the best alignment
-    aligned_seq_holo, aligned_seq_other = best_alignment[0], best_alignment[1]
+#     # Extract the aligned sequences from the best alignment
+#     aligned_seq_holo, aligned_seq_other = best_alignment[0], best_alignment[1]
 
-    return aligned_seq_holo, aligned_seq_other
+#     return aligned_seq_holo, aligned_seq_other
 
 
 
@@ -118,9 +118,9 @@ class GeoDockDataset(data.Dataset):
                 if full_complex:
                     assert len(chain_lens) == 2, "Complex should have two chains"
                 
-                if apo_or_pred and not full_complex:
-                    # Load corresponding holo
-                    seq_align = align_to_holo(pdb_file, seq)
+                # if apo_or_pred and not full_complex:
+                #     # Load corresponding holo
+                #     seq_align = align_to_holo(pdb_file, seq)
 
                 # Found non standard
                 # "CSO" -> "CYS" 
