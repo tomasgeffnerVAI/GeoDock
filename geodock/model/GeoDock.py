@@ -54,7 +54,7 @@ class GeoDock(pl.LightningModule):
         protein2_embeddings = input.protein2_embeddings
         pair_embeddings = input.pair_embeddings
         positional_embeddings = input.positional_embeddings
-
+    
         # Node embedding
         protein_embeddings = torch.cat([protein1_embeddings, protein2_embeddings], dim=1)
         nodes = self.esm_to_node(protein_embeddings)
@@ -85,7 +85,7 @@ class GeoDock(pl.LightningModule):
         protein2_embeddings = batch['protein2_embeddings']
         pair_embeddings = batch['pair_embeddings']
         positional_embeddings = batch['positional_embeddings']
-
+        
         # Prepare GeoDock input
         input = GeoDockInput(
             protein1_embeddings=protein1_embeddings,

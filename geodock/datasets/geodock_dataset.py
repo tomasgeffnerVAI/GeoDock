@@ -11,7 +11,6 @@ sys.path.append("/home/celine/GeoDock")
 from geodock.utils.pdb import save_PDB, place_fourth_atom 
 from geodock.utils.coords6d import get_coords6d
 from Bio import pairwise2
-from Bio.pairwise2 import format_alignment
 import numpy as np
 
 
@@ -72,7 +71,7 @@ class GeoDockDataset(data.Dataset):
 
         ########### Load input R/L ###########
         # preliminary "random" sample
-        source_list = ['holo']#['apo/', 'apo/alt/', 'holo/', 'predicted/']
+        source_list = ['holo', 'apo/', 'apo/alt/', 'predicted/']
         
         def find_existing_files(data_dir, source_list):
             extension=["_L.pt","_R.pt"]
@@ -133,31 +132,33 @@ class GeoDockDataset(data.Dataset):
             return mask_true, mask_other, aligned_seq_true, aligned_seq_other
 
         def expand_tensor_with_gaps(original_tensor, mask):
+            # OKD .-.
             target_length = len(mask)
             if len(original_tensor.shape) == 3:
-                expanded_tensor = np.zeros((target_length, 3, 3))
+                expanded_tensor = torch.zeros((target_length, 3, 3), dtype=original_tensor.dtype)
             else:
-                expanded_tensor = np.zeros((target_length, 1280))
+                expanded_tensor = torch.zeros((target_length, 1280), dtype=original_tensor.dtype)
 
             # Determine the indices in the original tensor corresponding to 'F' in the gap mask
-            tensor_indices = [i for i, el in enumerate(mask) if el == 'F']
+            #tensor_indices = [i for i, el in enumerate(mask) if el == 'F']
             # Copy values from the original tensor to the expanded tensor
-            for i, tensor_index in enumerate(tensor_indices):
-                expanded_tensor[i] = original_tensor[tensor_index]
+            #for i, tensor_index in enumerate(tensor_indices):
+            #   expanded_tensor[i] = original_tensor[tensor_index]
 
             # Copy values from the original tensor to empty expanded tensor
-            #tensor_index = 0
-            # for i in range(target_length):
-            #     if mask[i] == 'F':
-            #         if tensor_index < len(original_tensor):
-            #             expanded_tensor[i] = original_tensor[tensor_index]
-            #             tensor_index += 1
-            return torch.tensor(expanded_tensor)
+            tensor_index = 0
+            for i in range(target_length):
+                 if mask[i] == 'F':
+                     if tensor_index < len(original_tensor):
+                         expanded_tensor[i] = original_tensor[tensor_index]
+                         tensor_index += 1
+            return expanded_tensor
 
         #is the shape correct here? or just length?
         if len(seq1_true) != len(seq1):
-            #print("hello", len(seq1_true), len(seq1))
             mask1_true, mask1, seq1_true, seq1 = align_seqs(seq1_true, seq1)
+            #print("mask", len(mask1), len(mask1_true), "seqs", len(seq1_true), len(seq1))
+
             coords1_true = expand_tensor_with_gaps(coords1_true, mask1_true)
             coords1 = expand_tensor_with_gaps(coords1, mask1)
             protein1_embeddings = expand_tensor_with_gaps(protein1_embeddings, mask1)
@@ -169,6 +170,8 @@ class GeoDockDataset(data.Dataset):
         if len(seq2_true) != len(seq2):
             #print("hello", len(seq2_true), len(seq2))
             mask2_true, mask2, seq2_true, seq2 = align_seqs(seq2_true, seq2)
+            #print("mask", len(mask2), len(mask2_true), "seqs", len(seq2_true), len(seq2))
+            #print(len(coords2_true), len(coords2))
             coords2_true = expand_tensor_with_gaps(coords2_true, mask2_true)
             coords2 = expand_tensor_with_gaps(coords2, mask2)
             protein2_embeddings = expand_tensor_with_gaps(protein2_embeddings, mask2)
@@ -235,13 +238,13 @@ class GeoDockDataset(data.Dataset):
                     coords2_true = coords2_true[n:n+crop_size_per_chain]
                     protein2_embeddings = protein2_embeddings[n:n+crop_size_per_chain]
 
-        print(_id)
+        #print(_id)
         #print('sequence',type(seq1_true),type(seq1),type(seq2_true),type(seq2))
         #print('coords',type(coords1_true),type(coords1),type(coords2_true),type(coords2))
         #print('embeddings',type(protein1_embeddings),type(protein2_embeddings))
         #print('sequence', len(seq1_true), len(seq1), len(seq2_true), len(seq2))
-        print('coords', coords1_true.shape, coords1.shape, coords2_true.shape, coords2.shape)
-        print('embeddings', protein1_embeddings.shape, protein2_embeddings.shape)
+        #print('coords', coords1_true.shape, coords1.shape, coords2_true.shape, coords2.shape)
+        #print('embeddings', protein1_embeddings.shape, protein2_embeddings.shape)
 
 
 
