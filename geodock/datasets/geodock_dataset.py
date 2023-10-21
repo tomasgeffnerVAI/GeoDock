@@ -5,8 +5,14 @@ import torch.nn.functional as F
 from torch.utils import data
 from tqdm import tqdm
 from einops import repeat
+
+import sys
+sys.path.append("/home/celine/GeoDock")
 from geodock.utils.pdb import save_PDB, place_fourth_atom 
 from geodock.utils.coords6d import get_coords6d
+from Bio import pairwise2
+from Bio.pairwise2 import format_alignment
+import numpy as np
 
 
 class GeoDockDataset(data.Dataset):
@@ -32,14 +38,14 @@ class GeoDockDataset(data.Dataset):
 
         if dataset == 'pinder_toyexample_train':
             self.data_dir = "/home/tomasgeffner/pinder_copy/splits_v2/train"
-            self.data_list = "/home/tomasgeffner/pinder_copy/train_processed.txt"
+            self.data_list = "/home/tomasgeffner/pinder_copy/processed_train.txt"
             with open(self.data_list, 'r') as f:
                 lines = f.readlines()
             self.file_list = [line.strip() for line in lines] 
 
         elif dataset == 'pinder_toyexample_test':
             self.data_dir = "/home/tomasgeffner/pinder_copy/splits_v2/test"
-            self.data_list = "/home/tomasgeffner/pinder_copy/test_processed.txt" 
+            self.data_list = "/home/tomasgeffner/pinder_copy/processed_test.txt" 
             with open(self.data_list, 'r') as f:
                 lines = f.readlines()
             self.file_list = [line.strip() for line in lines]
@@ -49,17 +55,23 @@ class GeoDockDataset(data.Dataset):
 #        if self.dataset == 'pinder_toyexample_train' and self.dataset != 'pinder_toyexample_test': # DQ why?
             # Get info from file_list 
         _id = self.file_list[idx]
-        #split_string = _id.split('/')
-        #_id = split_string[0] + '_' + split_string[1].rsplit('.', 1)[0]
         
+        ########### Load target ground truth complex/holo data ###########
         path_complex = os.path.join(self.data_dir, _id, _id+'.pt')
         if os.path.exists(path_complex):
             data_complex = torch.load(path_complex)
         else:
             print("not good")
 
-        #####
-        # DQ random sample here?
+        # Get ground truth complex
+        seq1_true = data_complex['receptor'].seq
+        seq2_true = data_complex['ligand'].seq
+        coords1_true = data_complex['receptor'].pos
+        coords2_true = data_complex['ligand'].pos
+
+
+        ########### Load input R/L ###########
+        # preliminary "random" sample
         source_list = ['holo']#['apo/', 'apo/alt/', 'holo/', 'predicted/']
         
         def find_existing_files(data_dir, source_list):
@@ -90,19 +102,10 @@ class GeoDockDataset(data.Dataset):
                 
             #return "No file"  # If no existing file is found, return None
 
-        data_L, data_R = find_existing_files(self.data_dir, source_list)
-        #print ("Ligand", _id, data_L)
-
-        #data_R = find_existing_file(self.data_dir, source_list, ext ="_R.pt")
-        #print("receptor", _id, data_R)
-
+        data_L, data_R = find_existing_files(self.data_dir, source_list)        
         
-        #####
         
-        #data = torch.load(os.path.join(self.data_dir, _id+'.pt'))
-
-            # get receptor
-                #old:_id = data.name
+        # get receptor
         seq1 = data_R['prot'].seq
         coords1 = data_R['prot'].pos
         protein1_embeddings = data_R['prot'].x
@@ -112,21 +115,71 @@ class GeoDockDataset(data.Dataset):
         coords2 = data_L['prot'].pos
         protein2_embeddings = data_L['prot'].x
 
-        # Get ground truth complex
-        coords1_true = data_complex['receptor'].pos
-        coords2_true = data_complex['ligand'].pos
+        
+        ########### Align R/L with target R/L ###########
 
-        if coords1.shape[0] != coords1_true.shape[0]:
-            L_m = min(coords1.shape[0], coords1_true.shape[0])
-            coords1 = coords1[:L_m, :, :]
-            coords1_true = coords1_true[:L_m, :, :]
+        def align_seqs(seq_true, seq_other):
+            # sequence1, sequence2, match score, mismatch penalty, gap opening penalty, gap extension penalty
+            alignments = pairwise2.align.globalms(seq_true, seq_other, 2, -1, -5, -5)
+            sorted_alignments = sorted(alignments, key=lambda x: x[2], reverse=True)
+            # Get the best alignment
+            best_alignment = sorted_alignments[0]
+            # Extract the aligned sequences from the best alignment
+            aligned_seq_true, aligned_seq_other = best_alignment[0], best_alignment[1]
 
-        if coords2.shape[0] != coords2_true.shape[0]:
-            L_m = min(coords2.shape[0], coords2_true.shape[0])
-            coords2 = coords2[:L_m, :, :]
-            coords2_true = coords2_true[:L_m, :, :]
+            # note: i think it's the opposite of what matt uses (i do true for gap)
+            mask_true = ['T' if char == '-' else 'F' for char in aligned_seq_true]
+            mask_other = ['T' if char == '-' else 'F' for char in aligned_seq_other]
+            return mask_true, mask_other, aligned_seq_true, aligned_seq_other
+
+        def expand_tensor_with_gaps(original_tensor, mask):
+            target_length = len(mask)
+            if len(original_tensor.shape) == 3:
+                expanded_tensor = np.zeros((target_length, 3, 3))
+            else:
+                expanded_tensor = np.zeros((target_length, 1280))
+
+            # Determine the indices in the original tensor corresponding to 'F' in the gap mask
+            tensor_indices = [i for i, el in enumerate(mask) if el == 'F']
+            # Copy values from the original tensor to the expanded tensor
+            for i, tensor_index in enumerate(tensor_indices):
+                expanded_tensor[i] = original_tensor[tensor_index]
+
+            # Copy values from the original tensor to empty expanded tensor
+            #tensor_index = 0
+            # for i in range(target_length):
+            #     if mask[i] == 'F':
+            #         if tensor_index < len(original_tensor):
+            #             expanded_tensor[i] = original_tensor[tensor_index]
+            #             tensor_index += 1
+            return torch.tensor(expanded_tensor)
+
+        #is the shape correct here? or just length?
+        if len(seq1_true) != len(seq1):
+            #print("hello", len(seq1_true), len(seq1))
+            mask1_true, mask1, seq1_true, seq1 = align_seqs(seq1_true, seq1)
+            coords1_true = expand_tensor_with_gaps(coords1_true, mask1_true)
+            coords1 = expand_tensor_with_gaps(coords1, mask1)
+            protein1_embeddings = expand_tensor_with_gaps(protein1_embeddings, mask1)
+            #print("shape new", coords1_true.shape, coords1.shape, protein1_embeddings.shape)
+
+            #L_m = min(coords1.shape[0], coords1_true.shape[0])
+            #coords1 = coords1[:L_m, :, :]
+            #coords1_true = coords1_true[:L_m, :, :]
+        if len(seq2_true) != len(seq2):
+            #print("hello", len(seq2_true), len(seq2))
+            mask2_true, mask2, seq2_true, seq2 = align_seqs(seq2_true, seq2)
+            coords2_true = expand_tensor_with_gaps(coords2_true, mask2_true)
+            coords2 = expand_tensor_with_gaps(coords2, mask2)
+            protein2_embeddings = expand_tensor_with_gaps(protein2_embeddings, mask2)
+
+        # if coords2.shape[0] != coords2_true.shape[0]:
+        #     L_m = min(coords2.shape[0], coords2_true.shape[0])
+        #     coords2 = coords2[:L_m, :, :]
+        #     coords2_true = coords2_true[:L_m, :, :]
 
 
+        ########### Crop Length of target and input R/L ###########
         # crop > 500
         if not self.is_testing:
             crop_size = 500
@@ -182,11 +235,23 @@ class GeoDockDataset(data.Dataset):
                     coords2_true = coords2_true[n:n+crop_size_per_chain]
                     protein2_embeddings = protein2_embeddings[n:n+crop_size_per_chain]
 
+        print(_id)
+        #print('sequence',type(seq1_true),type(seq1),type(seq2_true),type(seq2))
+        #print('coords',type(coords1_true),type(coords1),type(coords2_true),type(coords2))
+        #print('embeddings',type(protein1_embeddings),type(protein2_embeddings))
+        #print('sequence', len(seq1_true), len(seq1), len(seq2_true), len(seq2))
+        print('coords', coords1_true.shape, coords1.shape, coords2_true.shape, coords2.shape)
+        print('embeddings', protein1_embeddings.shape, protein2_embeddings.shape)
+
+
+
         try:
             assert len(seq1) == coords1.size(0) == protein1_embeddings.size(0)
             assert len(seq2) == coords2.size(0) == protein2_embeddings.size(0) 
         except:
             print(_id, " Problem with seq==coord==emb length")
+            #print(len(seq1), coords1.size(0), protein1_embeddings.size(0))
+            #print(len(seq2), len(coords2), protein2_embeddings.size.size(0))
         
 
         label_coords = torch.cat([coords1_true, coords2_true], dim=0)
