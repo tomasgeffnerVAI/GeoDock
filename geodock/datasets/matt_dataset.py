@@ -57,7 +57,30 @@ class GeoDockDataset(data.Dataset):
 
     def get_decoy_receptor_ligand_pdbs(self, structure_root):
         # return pdb paths for receptor and ligand chain
-        pass  # TODO
+        source_list = ['holo', 'apo/', 'apo/alt/', 'predicted/'] 
+        extension=["_L.pdb","_R.pdb"]
+        data_paths = dict()
+
+        for ext in extension:
+            random.shuffle(source_list)
+
+            for element in source_list:
+                # Construct path
+                file_path = os.path.join(structure_root, self._id, element)
+                #print("Path", file_path)
+                files_in_directory = os.listdir(structure_root)
+                #print("Files in path", files_in_directory)
+
+                # check if file exists
+                matching_files = [file for file in files_in_directory if file.endswith(ext)]
+                #
+                if matching_files:
+                    #print("matched file", matching_files)
+                    # Load the first matching file (?) -> apo/alt is issue
+                    data_paths[ext] = os.path.join(file_path, matching_files[0])
+
+        return data_paths["_R.pdb"], data_paths["_L.pdb"]
+
 
     def get_contiguous_crop(self, crop_len: int, n_res: int):
         """Get a contiguous interval to crop"""
