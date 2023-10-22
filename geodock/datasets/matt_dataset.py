@@ -86,7 +86,7 @@ class GeoDockDataset(data.Dataset):
                     #print("matched file", matching_files)
                     # Load the first matching file (?) -> apo/alt is issue
                     data_paths[ext] = os.path.join(file_path, matching_files[0])
-        print(data_paths["R.pdb"], data_paths["L.pdb"])
+        # print(data_paths["R.pdb"], data_paths["L.pdb"])
         return data_paths["R.pdb"], data_paths["L.pdb"]
 
 
@@ -110,7 +110,7 @@ class GeoDockDataset(data.Dataset):
         target_pdb = os.path.join(structure_root,target_pdb)
         
         #target_pdb = os.path.join(structure_root, _id +'.pdb')
-        print(target_pdb,structure_root,_id)
+        # print(target_pdb,structure_root,_id)
         #print(target_pdb)
         decoy_receptor_pdb, decoy_ligand_pdb = self.get_decoy_receptor_ligand_pdbs(
             structure_root
@@ -185,7 +185,7 @@ class GeoDockDataset(data.Dataset):
 
 
         if self.out_pdb:
-            print(_id)
+            # print(_id)
             test_coords = self.get_full_coords(label_coords)
             out_file = _id + ".pdb"
             if os.path.exists(out_file):
@@ -247,7 +247,7 @@ class GeoDockDataset(data.Dataset):
             
         hit+=1
         self.skipped_n_hit=(skipped,hit)
-        print(skipped,hit)
+        # print(skipped,hit)
         return example
 
     def __len__(self):

@@ -179,7 +179,7 @@ def extract_pdb_seq_by_chain(
         residueLists.append(residueList)
         chains.append(chain)
     #print("hello", model)
-    print([chain.get_id() for chain in chains])
+    # print([chain.get_id() for chain in chains])
     return pdbseqs, residueLists, chains
 
 
