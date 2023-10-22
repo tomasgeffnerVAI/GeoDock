@@ -25,7 +25,8 @@ defaults:
 work_dir: /home/celine/GeoDock #${hydra:runtime.cwd}
 
 # path to folder with data
-data_dir: /home/tomasgeffner/pinder_copy #${work_dir}/data
+# data_dir: /home/tomasgeffner/pinder_copy #${work_dir}/data
+data_dir: /home/celine/GeoDock_data/train #${work_dir}/data
 
 # path to ckpt
 ckpt_path: null

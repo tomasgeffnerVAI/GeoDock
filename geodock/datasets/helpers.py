@@ -179,6 +179,7 @@ def extract_pdb_seq_by_chain(
         residueLists.append(residueList)
         chains.append(chain)
     #print("hello", model)
+    print([chain.get_id() for chain in chains])
     return pdbseqs, residueLists, chains
 
 
@@ -610,6 +611,8 @@ def get_item_from_pdbs_n_seq(
             atom_tys=atom_tys,
             chain_id=tgt_cid,
         )
+        if decoy_data is None or target_data is None:
+            return None  ##########################################################################################
         if default(tgt_pdb, decoy_pdb) == decoy_pdb:
             target_data = copy.deepcopy(target_data)
 
@@ -640,8 +643,11 @@ def append_chain_to_data(
     seq_encoding = torch.tensor([pc.AA_TO_INDEX[x] for x in seq])
     canonical_mask = aa_to_canonical_atom_mask(atom_tys)[seq_encoding]
 
-    print(mask is None, canonical_mask is None)
-    atom_mask = mask & canonical_mask
+    # print(mask is None, canonical_mask is None)
+    try:  ##############################################################################################################################
+        atom_mask = mask & canonical_mask
+    except:
+        return None
     ca_crds = repeat(
         crds[:, min(1, len(atom_tys)), :],
         "i c -> i a c",

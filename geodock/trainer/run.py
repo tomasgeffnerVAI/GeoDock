@@ -13,7 +13,8 @@ def main(config: DictConfig):
 
     import sys
 
-    sys.path.append("/home/celine/GeoDock")
+    # sys.path.append("/home/celine/GeoDock")
+    sys.path.append("/home/tomasgeffner/GeoDock")
     # Imports can be nested inside @hydra.main to optimize tab completion
     # https://github.com/facebookresearch/hydra/issues/934
     from geodock.trainer.train import train

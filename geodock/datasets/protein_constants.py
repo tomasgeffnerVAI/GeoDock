@@ -27,6 +27,7 @@ AA_ALPHABET = "".join(
 NATURAL_AAS = [x for x in AA_ALPHABET]
 AA_ALPHABET += "X"
 
+BB_ATOMS_GEO = ["N", "CA", "C"]
 BB_ATOMS = ["N", "CA", "C", "O"]
 SC_ATOMS = [
     "CE3",

@@ -8,7 +8,8 @@ from einops import repeat
 
 import sys
 
-sys.path.append("/home/celine/GeoDock")
+# sys.path.append("/home/celine/GeoDock")
+# sys.path.append("/home/tomasgeffner/GeoDock")
 from geodock.utils.pdb import save_PDB, place_fourth_atom
 from geodock.utils.coords6d import get_coords6d
 import numpy as np
@@ -28,6 +29,7 @@ class GeoDockDataset(data.Dataset):
         count: int = 0,
         use_Cb: bool = True,
     ):
+        self.skipped_n_hit = (0,0)
         self.dataset = dataset
         self.out_pdb = out_pdb
         self.out_png = out_png
@@ -37,19 +39,28 @@ class GeoDockDataset(data.Dataset):
         self.count = count
         self.use_Cb = use_Cb
 
-        if dataset == "pinder_toyexample_train":
-            self.data_dir = "/home/tomasgeffner/pinder_copy/splits_v2/train"
-            self.data_list = "/home/tomasgeffner/pinder_copy/processed_train.txt"
-            with open(self.data_list, "r") as f:
-                lines = f.readlines()
-            self.file_list = [line.strip() for line in lines]
 
-        elif dataset == "pinder_toyexample_test":
+        # if dataset == "pinder_toyexample_train":
+        #     self.data_dir = "/home/tomasgeffner/pinder_copy/splits_v2/train"
+        #     self.data_list = "/home/tomasgeffner/pinder_copy/processed_train.txt"
+        #     with open(self.data_list, "r") as f:
+        #         lines = f.readlines()
+        #     self.file_list = [line.strip() for line in lines]
+
+        if dataset == "pinder_toyexample_test":
             self.data_dir = "/home/tomasgeffner/pinder_copy/splits_v2/test"
             self.data_list = "/home/tomasgeffner/pinder_copy/processed_test.txt"
             with open(self.data_list, "r") as f:
                 lines = f.readlines()
             self.file_list = [line.strip() for line in lines]
+        
+        if dataset == "pinder_toyexample_train":
+            self.data_dir = "/home/celine/GeoDock_data/train"
+            self.file_list = [f.path for f in os.scandir(self.data_dir) if f.is_dir()]
+            # self.data_list = "/home/tomasgeffner/pinder_copy/processed_train.txt"
+            # with open(self.data_list, "r") as f:
+            #     lines = f.readlines()
+            # self.file_list = [line.strip() for line in lines]
 
         # This to download: model, alphabet = torch.hub.load("facebookresearch/esm:main", "esm2_t33_650M_UR50D")
         _, alphabet = torch.hub.load("facebookresearch/esm:main", "esm2_t33_650M_UR50D")
@@ -58,12 +69,14 @@ class GeoDockDataset(data.Dataset):
     def get_decoy_receptor_ligand_pdbs(self, structure_root):
         # return pdb paths for receptor and ligand chain
         source_list = ['holo', 'apo/', 'apo/alt/', 'predicted/'] 
-        extension=["_R.pdb","_L.pdb"]
+        extension=["R.pdb","L.pdb"]
         data_paths = dict()
         for ext in extension:
             random.shuffle(source_list)
-            for element in source_list:
+            for element in os.listdir(structure_root):
                 file_path = os.path.join(structure_root, element)
+                if not os.path.isdir(file_path):
+                    continue
                 #print(file_path)
 
                 files_in_directory = os.listdir(file_path)
@@ -73,7 +86,8 @@ class GeoDockDataset(data.Dataset):
                     #print("matched file", matching_files)
                     # Load the first matching file (?) -> apo/alt is issue
                     data_paths[ext] = os.path.join(file_path, matching_files[0])
-        return data_paths["_R.pdb"], data_paths["_L.pdb"]
+        print(data_paths["R.pdb"], data_paths["L.pdb"])
+        return data_paths["R.pdb"], data_paths["L.pdb"]
 
 
     def get_contiguous_crop(self, crop_len: int, n_res: int):
@@ -83,18 +97,20 @@ class GeoDockDataset(data.Dataset):
         start, end = 0, n_res
         start = random.randint(0, (end - crop_len)) if end > crop_len else start
         return start, min(end, start + crop_len)
-
-    def __getitem__(self, idx: int):
+    
+    def _get_item(self, idx: int):
         # Get info from file_list
         _id = self.file_list[idx]
 
         # load example -- TODO: get pred, apo, and holo and choose which to use for aln
         structure_root = os.path.join(self.data_dir, _id)
-        #target_pdb = next(
-        #    filter(lambda x: x.endswith("pdb"), os.listdir(structure_root))
-        #)
+        target_pdb = next(
+           filter(lambda x: x.endswith("pdb"), os.listdir(structure_root))
+        )
+        target_pdb = os.path.join(structure_root,target_pdb)
         
-        target_pdb = os.path.join(structure_root, _id +'.pdb')
+        #target_pdb = os.path.join(structure_root, _id +'.pdb')
+        print(target_pdb,structure_root,_id)
         #print(target_pdb)
         decoy_receptor_pdb, decoy_ligand_pdb = self.get_decoy_receptor_ligand_pdbs(
             structure_root
@@ -105,30 +121,38 @@ class GeoDockDataset(data.Dataset):
             decoy_pdb_paths=[decoy_receptor_pdb, decoy_ligand_pdb],
             target_pdb_paths=[target_pdb, target_pdb],
             # TODO: make atom types in same order as geodock!
-            atom_tys=tuple(pc.ALL_ATOMS),
-            decoy_chain_ids=["R", "L"],  # TODO: might be B, A??
-            target_chain_ids=["a", "b"],
+            # atom_tys=tuple(pc.ALL_ATOMS),
+            atom_tys=tuple(pc.BB_ATOMS_GEO),
+            decoy_chain_ids=[None,None],  # TODO: might be B, A?? RL!
+            target_chain_ids=["R","L"],
         )
 
-        residue1_mask = (
+        if data is None:
+            return None  ####################################################################################################################################
+
+        chain1_mask = (
             data["target"]["residue_mask"][0] & data["decoy"]["residue_mask"][0]
         )
-        residue2_mask = (
+        chain2_mask = (
             data["target"]["residue_mask"][1] & data["decoy"]["residue_mask"][1]
         )
-        coords1_true = data["target"]["coordinates"][0][residue1_mask]
-        coords2_true = data["target"]["coordinates"][1][residue2_mask]
-        coords1_decoy = data["target"]["coordinates"][0][residue1_mask]
-        coords2_decoy = data["target"]["coordinates"][1][residue2_mask]
+        coords1_true = data["target"]["coordinates"][0][chain1_mask]
+        coords2_true = data["target"]["coordinates"][1][chain2_mask]
+        # coords1_decoy = data["target"]["coordinates"][0][chain1_mask]
+        # coords2_decoy = data["target"]["coordinates"][1][chain2_mask]
+        coords1_decoy = data["decoy"]["coordinates"][0][chain1_mask]
+        coords2_decoy = data["decoy"]["coordinates"][1][chain2_mask]
         seq1 = "".join(
-            [x for x, m in zip(data["target"]["sequence"], residue1_mask) if m]
+            [x for x, m in zip(data["target"]["sequence"][0], chain1_mask) if m]
         )
         seq2 = "".join(
-            [x for x, m in zip(data["target"]["sequence"], residue1_mask) if m]
+            [x for x, m in zip(data["target"]["sequence"][1], chain2_mask) if m]
         )
+        # TODO: Fix sequence for embeddings, we cannot mask here, not yet - NO
 
         #### generate input ####
         decoy_coords = torch.cat([coords1_decoy, coords2_decoy], dim=0)
+        # print(decoy_coords.shape)
 
         # Pair embedding
         input_pairs = self.get_pair_mats(decoy_coords, len(seq1))
@@ -189,10 +213,42 @@ class GeoDockDataset(data.Dataset):
             "label_rotat": label_rotat,
             "label_trans": label_trans,
             "label_coords": label_coords,
-            "crop_posns": None
+            # "crop_posns": None
         }
 
         return {key: value for key, value in output.items()}
+
+
+    # def __getitem__(self, idx: int):
+    #     example = None
+    #     while example is None:
+    #         try:
+    #             example = self._get_item(idx)  # regular dataset __getitem__ function
+            
+    #         except Exception as e:
+    #             print("__getitem__ returned None")
+    #             print(e)
+    #             example = None
+            
+    #         if example is None:
+    #             idx = random.randint(0, len(self))
+        
+    #     return example
+
+    def __getitem__(self, idx: int):
+        example = None
+        skipped,hit = self.skipped_n_hit
+        while example is None:
+            
+            example = self._get_item(idx)
+            idx = random.randint(0, len(self))
+            if example is None:
+                skipped+=1
+            
+        hit+=1
+        self.skipped_n_hit=(skipped,hit)
+        print(skipped,hit)
+        return example
 
     def __len__(self):
         return len(self.file_list)
@@ -375,6 +431,7 @@ class GeoDockDataset(data.Dataset):
     def get_full_coords(self, coords):
         # get full coords
         N, CA, C = [x.squeeze(-2) for x in coords.chunk(3, dim=-2)]
+        # print(coords.shape, C.shape, CA.shape)
         # Infer CB coordinates.
         b = CA - N
         c = C - CA

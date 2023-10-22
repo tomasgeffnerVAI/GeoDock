@@ -325,7 +325,8 @@ class GeoDockLoss(nn.Module):
         label_coords = batch['label_coords']
         label_rotat = batch['label_rotat']
         label_trans = batch['label_trans']
-        sep = batch['protein1_embeddings'].size(1)
+        # sep = batch['protein1_embeddings'].size(1)
+        sep = len(batch['seq1'][0])
         pred_fape = get_fape(pred_coords, pred_rotat, pred_trans)
         label_fape = get_fape(label_coords, label_rotat, label_trans)
 

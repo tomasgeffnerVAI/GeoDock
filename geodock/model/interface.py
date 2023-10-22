@@ -5,11 +5,13 @@ import torch
 
 @dataclass
 class GeoDockInput():
-    protein1_embeddings: torch.FloatTensor
-    protein2_embeddings: torch.FloatTensor
+    # protein1_embeddings: torch.FloatTensor
+    # protein2_embeddings: torch.FloatTensor
     pair_embeddings: torch.FloatTensor
     positional_embeddings: torch.FloatTensor
-
+    seq1: str
+    seq2: str
+    esm_tokens: torch.FloatTensor
 
 @dataclass
 class GeoDockOutput():

@@ -51,21 +51,36 @@ class GeoDock(pl.LightningModule):
 
     def forward(self, input: GeoDockInput):
         # Likely here call ESM embeddings on the fly
+        # Stuff is batched / collated, so has an extra 1 in front of everything
+
+        # print(type(input.esm_tokens))
+        # print(input.esm_tokens.shape)
+        # print(len(input.seq1[0]) + len(input.seq2[0]))
+        # print(len(input.seq1[0]), len(input.seq2[0]))
 
         with torch.set_grad_enabled(False):
             ll = self.esm.num_layers
             reprs = self.esm(
-                input.esm_tokens.long().to(self.device),
+                input.esm_tokens[0].long().to(self.device),
                 repr_layers=[ll],
                 return_contacts=False,
             )["representations"]
+        # print(reprs[ll].shape)
         protein1_embeddings = reprs[ll][0, 1:-1, :]
         protein2_embeddings = reprs[ll][1, 1:-1, :]
+
+        protein1_embeddings = protein1_embeddings[:len(input.seq1[0]), :][None, :, :]
+        protein2_embeddings = protein2_embeddings[:len(input.seq2[0]), :][None, :, :]  # [L, 1280] -> [1, L, 1280]
+
+        # print(protein1_embeddings.shape, protein2_embeddings.shape)
 
         # TODO: now crop all features
 
         pair_embeddings = input.pair_embeddings
         positional_embeddings = input.positional_embeddings
+
+        # print(pair_embeddings.shape)
+        # print(positional_embeddings.shape)
 
         # Node embedding
         protein_embeddings = torch.cat(
@@ -97,17 +112,22 @@ class GeoDock(pl.LightningModule):
 
     def step(self, batch, batch_idx):
         # Get info from the batch
-        protein1_embeddings = batch["protein1_embeddings"]
-        protein2_embeddings = batch["protein2_embeddings"]
+        # protein1_embeddings = batch["protein1_embeddings"]
+        # protein2_embeddings = batch["protein2_embeddings"]
         pair_embeddings = batch["pair_embeddings"]
         positional_embeddings = batch["positional_embeddings"]
+        seq1 = batch["seq1"]
+        seq2 = batch["seq2"]
 
         # Prepare GeoDock input
         input = GeoDockInput(
-            protein1_embeddings=protein1_embeddings,
-            protein2_embeddings=protein2_embeddings,
+            # protein1_embeddings=protein1_embeddings,
+            # protein2_embeddings=protein2_embeddings,
             pair_embeddings=pair_embeddings,
             positional_embeddings=positional_embeddings,
+            esm_tokens=batch["esm_tokens"],
+            seq1=seq1,
+            seq2=seq2,
         )
 
         # Get GeoDock output
