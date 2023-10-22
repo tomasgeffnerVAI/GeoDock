@@ -29,6 +29,7 @@ work_dir: /home/celine/GeoDock #${hydra:runtime.cwd}
 data_dir: /home/celine/GeoDock_data/train #${work_dir}/data
 
 # path to ckpt
+# ckpt_path: /home/tomasgeffner/checkpoint_geodock/weights_ours.chk
 ckpt_path: null
 
 # pretty print config at the start of the run using Rich library

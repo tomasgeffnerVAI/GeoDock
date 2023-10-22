@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import repeat, rearrange
 from geodock.model.interface import GeoDockOutput
+from geodock.utils.crop import crop_targets
 
 def get_fape(
     coords: torch.Tensor, 
@@ -318,15 +319,17 @@ class GeoDockLoss(nn.Module):
     def __init__(self):
         super(GeoDockLoss, self).__init__()
 
-    def forward(self, out: GeoDockOutput, batch):
+    # def forward(self, out: GeoDockOutput, batch):
+    def forward(self, out: GeoDockOutput, label_coords, label_rotat, label_trans, sep):
         pred_coords = out.coords
         pred_rotat = out.rotat
         pred_trans = out.trans
-        label_coords = batch['label_coords']
-        label_rotat = batch['label_rotat']
-        label_trans = batch['label_trans']
+        # label_coords = batch['label_coords']
+        # label_rotat = batch['label_rotat']
+        # label_trans = batch['label_trans']
         # sep = batch['protein1_embeddings'].size(1)
-        sep = len(batch['seq1'][0])
+        # sep = len(batch['seq1'][0])  ############# ################ ############# ############## ############# ################ ############# ################
+        
         pred_fape = get_fape(pred_coords, pred_rotat, pred_trans)
         label_fape = get_fape(label_coords, label_rotat, label_trans)
 

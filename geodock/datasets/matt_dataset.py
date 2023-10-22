@@ -57,10 +57,12 @@ class GeoDockDataset(data.Dataset):
         if dataset == "pinder_toyexample_train":
             self.data_dir = "/home/celine/GeoDock_data/train"
             self.file_list = [f.path for f in os.scandir(self.data_dir) if f.is_dir()]
-            # self.data_list = "/home/tomasgeffner/pinder_copy/processed_train.txt"
-            # with open(self.data_list, "r") as f:
-            #     lines = f.readlines()
-            # self.file_list = [line.strip() for line in lines]
+            self.file_list = self.file_list[:50]
+        
+        if dataset == "pinder_toyexample_val":
+            self.data_dir = "/home/celine/GeoDock_data/train"
+            self.file_list = [f.path for f in os.scandir(self.data_dir) if f.is_dir()]
+            self.file_list = self.file_list[:20]
 
         # This to download: model, alphabet = torch.hub.load("facebookresearch/esm:main", "esm2_t33_650M_UR50D")
         _, alphabet = torch.hub.load("facebookresearch/esm:main", "esm2_t33_650M_UR50D")
@@ -219,36 +221,42 @@ class GeoDockDataset(data.Dataset):
         return {key: value for key, value in output.items()}
 
 
-    # def __getitem__(self, idx: int):
-    #     example = None
-    #     while example is None:
-    #         try:
-    #             example = self._get_item(idx)  # regular dataset __getitem__ function
-            
-    #         except Exception as e:
-    #             print("__getitem__ returned None")
-    #             print(e)
-    #             example = None
-            
-    #         if example is None:
-    #             idx = random.randint(0, len(self))
-        
-    #     return example
-
     def __getitem__(self, idx: int):
         example = None
         skipped,hit = self.skipped_n_hit
+
         while example is None:
+            try:
+                example = self._get_item(idx)  # regular dataset __getitem__ function
             
-            example = self._get_item(idx)
-            idx = random.randint(0, len(self))
+            except Exception as e:
+                print("__getitem__ returned None")
+                print(e)
+                example = None
+            
             if example is None:
+                idx = random.randint(0, len(self))
                 skipped+=1
-            
-        hit+=1
+        
+        hit += 1
         self.skipped_n_hit=(skipped,hit)
         # print(skipped,hit)
         return example
+
+    # def __getitem__(self, idx: int):
+    #     example = None
+    #     skipped,hit = self.skipped_n_hit
+    #     while example is None:
+            
+    #         example = self._get_item(idx)
+    #         idx = random.randint(0, len(self))
+    #         if example is None:
+    #             skipped+=1
+            
+    #     hit+=1
+    #     self.skipped_n_hit=(skipped,hit)
+    #     # print(skipped,hit)
+    #     return example
 
     def __len__(self):
         return len(self.file_list)

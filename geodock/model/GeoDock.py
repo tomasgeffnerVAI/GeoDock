@@ -9,58 +9,7 @@ from geodock.datasets.matt_dataset import GeoDockDataset
 from geodock.model.interface import GeoDockInput, GeoDockOutput
 from geodock.model.modules.iterative_transformer import IterativeTransformer
 from geodock.utils.loss import GeoDockLoss
-
-
-
-
-# # crop > 500
-# if not self.is_testing:
-#     crop_size = 500
-#     if len(seq1) + len(seq2) > crop_size:
-#         crop_size_per_chain = crop_size // 2
-#         if len(seq1) > len(seq2):
-#             if len(seq2) < crop_size_per_chain:
-#                 crop_len = crop_size - len(seq2)
-#                 n = random.randint(0, len(seq1)-crop_len)
-#                 seq1 = seq1[n:n+crop_len]
-#                 coords1 = coords1[n:n+crop_len]
-#                 protein1_embeddings = protein1_embeddings[n:n+crop_len]
-#             else:
-#                 n1 = random.randint(0, len(seq1)-crop_size_per_chain)
-#                 seq1 = seq1[n1:n1+crop_size_per_chain]
-#                 coords1 = coords1[n1:n1+crop_size_per_chain]
-#                 protein1_embeddings = protein1_embeddings[n1:n1+crop_size_per_chain]
-#                 n2 = random.randint(0, len(seq2)-crop_size_per_chain)
-#                 seq2 = seq2[n2:n2+crop_size_per_chain]
-#                 coords2 = coords2[n2:n2+crop_size_per_chain]
-#                 protein2_embeddings = protein2_embeddings[n2:n2+crop_size_per_chain]
-
-#         elif len(seq2) > len(seq1):
-#             if len(seq1) < crop_size_per_chain:
-#                 crop_len = crop_size - len(seq1)
-#                 n = random.randint(0, len(seq2)-crop_len)
-#                 seq2 = seq2[n:n+crop_len]
-#                 coords2 = coords2[n:n+crop_len]
-#                 protein2_embeddings = protein2_embeddings[n:n+crop_len]
-#             else:
-#                 n1 = random.randint(0, len(seq1)-crop_size_per_chain)
-#                 seq1 = seq1[n1:n1+crop_size_per_chain]
-#                 coords1 = coords1[n1:n1+crop_size_per_chain]
-#                 protein1_embeddings = protein1_embeddings[n1:n1+crop_size_per_chain]
-#                 n2 = random.randint(0, len(seq2)-crop_size_per_chain)
-#                 seq2 = seq2[n2:n2+crop_size_per_chain]
-#                 coords2 = coords2[n2:n2+crop_size_per_chain]
-#                 protein2_embeddings = protein2_embeddings[n2:n2+crop_size_per_chain]
-#         else:
-#             n = random.randint(0, len(seq1)-crop_size_per_chain)
-#             seq1 = seq1[n:n+crop_size_per_chain]
-#             coords1 = coords1[n:n+crop_size_per_chain]
-#             protein1_embeddings = protein1_embeddings[n:n+crop_size_per_chain]
-#             seq2 = seq2[n:n+crop_size_per_chain]
-#             coords2 = coords2[n:n+crop_size_per_chain]
-#             protein2_embeddings = protein2_embeddings[n:n+crop_size_per_chain]
-
-
+from geodock.utils.crop import crop_features, crop_targets
 
 
 
@@ -125,12 +74,19 @@ class GeoDock(pl.LightningModule):
         protein1_embeddings = protein1_embeddings[:len(input.seq1[0]), :][None, :, :]
         protein2_embeddings = protein2_embeddings[:len(input.seq2[0]), :][None, :, :]  # [L, 1280] -> [1, L, 1280]
 
-        # TODO: now crop all features
-
         pair_embeddings = input.pair_embeddings
         positional_embeddings = input.positional_embeddings
 
-        print(protein1_embeddings.shape, protein2_embeddings.shape, pair_embeddings.shape, positional_embeddings.shape)
+        # print(protein1_embeddings.shape, protein2_embeddings.shape, pair_embeddings.shape, positional_embeddings.shape)
+
+        protein1_embeddings, protein2_embeddings, pair_embeddings, positional_embeddings = crop_features(
+            protein1_embeddings,
+            protein2_embeddings,
+            pair_embeddings,
+            positional_embeddings,
+        )
+
+        # print(protein1_embeddings.shape, protein2_embeddings.shape, pair_embeddings.shape, positional_embeddings.shape)
 
         # Node embedding
         protein_embeddings = torch.cat(
@@ -183,8 +139,25 @@ class GeoDock(pl.LightningModule):
         # Get GeoDock output
         output = self(input)
 
+        # print(batch["label_coords"].shape)
+        # print(batch["label_rotat"].shape)
+        # print(batch["label_trans"].shape)
+
+        label_coords, label_rotat, label_trans, sep = crop_targets(
+            batch["label_coords"],
+            batch["label_rotat"],
+            batch["label_trans"],
+            L1=len(seq1[0]),
+            L2=len(seq2[0]),
+        )
+
+        # print(label_coords.shape)
+        # print(label_rotat.shape)
+        # print(label_trans.shape)
+
         # Loss
-        losses = self.loss(output, batch)
+        # losses = self.loss(output, batch)
+        losses = self.loss(output, label_coords, label_rotat, label_trans, sep)
         intra_loss = losses["intra_loss"]
         inter_loss = losses["inter_loss"]
         dist_loss = losses["dist_loss"]

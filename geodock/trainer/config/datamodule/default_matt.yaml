@@ -1,7 +1,7 @@
 _target_: geodock.datasets.geodock_datamodule.GeoDockDataModule
 
 train_set: pinder_toyexample_train
-val_set: pinder_toyexample_train
+val_set: pinder_toyexample_val
 test_set: pinder_toyexample_test
 batch_size: 1
 num_workers: 6

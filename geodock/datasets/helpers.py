@@ -343,7 +343,8 @@ def map_seq_to_pdb(
     :return: seq2pdb mapping, the pdb residue list, the pdb seq, the pdb chain,
      the number of mismtaches and matches
     """
-    maxMisMatches = max(5, default(maxMisMatches, int(0.1 * len(sequence))))
+    # maxMisMatches = max(5, default(maxMisMatches, int(0.1 * len(sequence))))
+    maxMisMatches = max(15, default(maxMisMatches, int(0.1 * len(sequence))))
     if not os.path.isfile(pdbfile):
         # pylint: disable-next=broad-exception-raised
         raise Exception("ERROR: the pdb file does not exist: ", pdbfile)
@@ -379,19 +380,18 @@ def map_seq_to_pdb(
             bestChain = chain
 
     if minMisMatches > maxMisMatches:
-        # print("Hola")
         print(
             f"ERROR: there are  {minMisMatches} mismatches between"
             f" the query sequence and PDB file: {pdbfile}\n"
-            f"num residue : {len(sequence)}"
+            f"num residue: {len(sequence)}"
         )
         return None, None, None, None, None, None
 
     if maxMatches < min(30.0, minMatchRatio * len(sequence)):
-        # print("Chau")
         print(
-            "ERROR: there are only  {maxMatches} matches on query sequence, "
-            f"less than  {minMatchRatio} of its length from PDB file: {pdbfile}"
+            f"ERROR: there are only {maxMatches} matches on query sequence, "
+            f"less than {minMatchRatio} of its length from PDB file: {pdbfile}\n"
+            f"num residue: {len(sequence)}"
         )
         return None, None, None, None, None, None
 
