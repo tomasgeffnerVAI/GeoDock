@@ -55,49 +55,48 @@ class GeoDockDataset(data.Dataset):
                 lines = f.readlines()
             self.file_list = [line.strip() for line in lines]
         
+        # if dataset == "pinder_toyexample_train":
+        #     self.data_dir = "/home/celine/GeoDock_data/train"
+        #     #self.file_list = [f.path for f in os.scandir(self.data_dir) if f.is_dir()]  # TODO: clusters
+        #     # L = len(self.file_list)  # These lines for training with 90%
+        #     # self.file_list = self.file_list[:int(9 * L / 10)]
+        #     cluster_file_path = "/home/celine/GeoDock_data/train_clusters.tsv"
+        #     df =  pd.read_csv(cluster_file_path, sep="\t", header=None, names=["cluster", "pdbs"]) # todo pass cluster file
+        #     self.file_list =df["cluster"].tolist()            
+
+        
+        # if dataset == "pinder_toyexample_val":
+        #     self.data_dir = "/home/celine/GeoDock_data/train"
+        #     self.file_list = [f.path for f in os.scandir(self.data_dir) if f.is_dir()]  # TODO: clusters
+        #     # L = len(self.file_list)  # These line for validation with 10%
+        #     # self.file_list = self.file_list[int(9 * L / 10):]
+
         if dataset == "pinder_toyexample_train":
             self.data_dir = "/home/celine/GeoDock_data/train"
-            #self.file_list = [f.path for f in os.scandir(self.data_dir) if f.is_dir()]  # TODO: clusters
-            # L = len(self.file_list)  # These lines for training with 90%
-            # self.file_list = self.file_list[:int(9 * L / 10)]
             cluster_file_path = "/home/celine/GeoDock_data/train_clusters.tsv"
-            df =  pd.read_csv(cluster_file_path, sep="\t", header=None, names=["cluster", "pdbs"]) # todo pass cluster file
-            self.file_list =df["cluster"].tolist()            
+            df = pd.read_csv(cluster_file_path, sep="\t", header=None, names=["cluster", "pdbs"])  # todo pass cluster file
+            cluster_list = df["cluster"].tolist()
+            L = len(cluster_list)
+            self.cluster_list = cluster_list[:int(9 * L / 10)]
+            self.cluster_df = df
 
         
         if dataset == "pinder_toyexample_val":
             self.data_dir = "/home/celine/GeoDock_data/train"
-            self.file_list = [f.path for f in os.scandir(self.data_dir) if f.is_dir()]  # TODO: clusters
-            # L = len(self.file_list)  # These line for validation with 10%
-            # self.file_list = self.file_list[int(9 * L / 10):]
+            cluster_file_path = "/home/celine/GeoDock_data/train_clusters.tsv"
+            df = pd.read_csv(cluster_file_path, sep="\t", header=None, names=["cluster", "pdbs"])  # todo pass cluster file
+            cluster_list = df["cluster"].tolist()
+            L = len(cluster_list)
+            self.cluster_list = cluster_list[int(9 * L / 10):]
+            self.cluster_df = df
 
         # This to download: model, alphabet = torch.hub.load("facebookresearch/esm:main", "esm2_t33_650M_UR50D")
         _, alphabet = torch.hub.load("facebookresearch/esm:main", "esm2_t33_650M_UR50D")
         self.batch_converter = alphabet.get_batch_converter()
 
 
-
-    # def get_decoy_receptor_ligand_pdbs(self, structure_root):
-    #     # return pdb paths for receptor and ligand chain
-    #     source_list = ['holo', 'apo/', 'apo/alt/', 'predicted/'] 
-    #     extension=["R.pdb","L.pdb"]
-    #     data_paths = dict()
-    #     for ext in extension:
-    #         random.shuffle(source_list)
-    #         for element in os.listdir(structure_root):
-    #             file_path = os.path.join(structure_root, element)
-    #             if not os.path.isdir(file_path):
-    #                 continue
-    #             #print(file_path)
-
-    #             files_in_directory = os.listdir(file_path)
-    #             # check if file exists
-    #             matching_files = [file for file in files_in_directory if file.endswith(ext)]
-    #             if matching_files:
-    #                 #print("matched file", matching_files)
-    #                 # Load the first matching file (?) -> apo/alt is issue
-    #                 data_paths[ext] = os.path.join(file_path, matching_files[0])
-    #     return data_paths["R.pdb"], data_paths["L.pdb"]
+    def __len__(self):
+        return len(self.cluster_list)
 
 
     def get_decoy_receptor_ligand_pdbs(self, structure_root):
@@ -142,30 +141,33 @@ class GeoDockDataset(data.Dataset):
     
     
     def _get_item(self, idx: int):
-        cluster_file_path = "/home/celine/GeoDock_data/train_clusters.tsv"
-        #processed_file_path = 'graph_data/graphs' #if we want we can only include processed files
-        #processed_files = set({os.path.splitext(x)[0].replace("ligand_","").replace("receptor_",""): x for x in os.listdir(processed_file_path)[:200] if x.endswith(".bin")})
-        cluster_df = pd.read_csv(cluster_file_path, sep="\t", header=None, names=["cluster", "pdbs"]) # todo pass cluster file            
-        cluster_df["pdbs"] = cluster_df["pdbs"].apply(lambda x: [y for y in x.split(";")])
-        #cluster_df["pdbs"] = cluster_df["pdbs"].apply(lambda x: [y for y in x if y in processed_files])
-        cluster_df = cluster_df[cluster_df["pdbs"].apply(len) > 0]
-        self.file_list = [np.random.choice(x) for x in cluster_df['pdbs'] if x]
-        #print(len(self.file_list), self.file_list[0:3])
+        # cluster_file_path = "/home/celine/GeoDock_data/train_clusters.tsv"
+        # #processed_file_path = 'graph_data/graphs' #if we want we can only include processed files
+        # #processed_files = set({os.path.splitext(x)[0].replace("ligand_","").replace("receptor_",""): x for x in os.listdir(processed_file_path)[:200] if x.endswith(".bin")})
+        # cluster_df = pd.read_csv(cluster_file_path, sep="\t", header=None, names=["cluster", "pdbs"]) # todo pass cluster file            
+        # cluster_df["pdbs"] = cluster_df["pdbs"].apply(lambda x: [y for y in x.split(";")])
+        # #cluster_df["pdbs"] = cluster_df["pdbs"].apply(lambda x: [y for y in x if y in processed_files])
+        # cluster_df = cluster_df[cluster_df["pdbs"].apply(len) > 0]
+        # self.file_list = [np.random.choice(x) for x in cluster_df['pdbs'] if x]
+        # #print(len(self.file_list), self.file_list[0:3])
+        
+        cluster_name = self.cluster_list[idx]
+        pdbs = self.cluster_df.loc[self.cluster_df['cluster'] == cluster_name, 'pdbs'].iloc[0]  # Each cluster has unique name this should be just a single element, hence the [0]
+        pdbs = pdbs.split(";")
+        _id = random.choice(pdbs)
 
+        # print(cluster_name, len(pdbs), pdbs[0], "\n====")
 
-        # Get info from file_list
-        _id = self.file_list[idx]
+        # # Get info from file_list
+        # _id = self.file_list[idx]
 
-        # load example -- TODO: get pred, apo, and holo and choose which to use for aln
+        # load example
         structure_root = os.path.join(self.data_dir, _id)
         target_pdb = next(
            filter(lambda x: x.endswith("pdb"), os.listdir(structure_root))
         )
         target_pdb = os.path.join(structure_root,target_pdb)
         
-        #target_pdb = os.path.join(structure_root, _id +'.pdb')
-        # print(target_pdb,structure_root,_id)
-        #print(target_pdb)
         decoy_receptor_pdb, decoy_ligand_pdb = self.get_decoy_receptor_ligand_pdbs(
             structure_root
         )
@@ -192,8 +194,6 @@ class GeoDockDataset(data.Dataset):
         )
         coords1_true = data["target"]["coordinates"][0][chain1_mask]
         coords2_true = data["target"]["coordinates"][1][chain2_mask]
-        # coords1_decoy = data["target"]["coordinates"][0][chain1_mask]
-        # coords2_decoy = data["target"]["coordinates"][1][chain2_mask]
         coords1_decoy = data["decoy"]["coordinates"][0][chain1_mask]
         coords2_decoy = data["decoy"]["coordinates"][1][chain2_mask]
         seq1 = "".join(
@@ -206,7 +206,6 @@ class GeoDockDataset(data.Dataset):
 
         #### generate input ####
         decoy_coords = torch.cat([coords1_decoy, coords2_decoy], dim=0)
-        # print(decoy_coords.shape)
 
         # Pair embedding
         input_pairs = self.get_pair_mats(decoy_coords, len(seq1))
@@ -267,7 +266,6 @@ class GeoDockDataset(data.Dataset):
             "label_rotat": label_rotat,
             "label_trans": label_trans,
             "label_coords": label_coords,
-            # "crop_posns": None
         }
 
         return {key: value for key, value in output.items()}
@@ -309,9 +307,6 @@ class GeoDockDataset(data.Dataset):
     #     self.skipped_n_hit=(skipped,hit)
     #     # print(skipped,hit)
     #     return example
-
-    def __len__(self):
-        return len(self.file_list)
 
     def get_rotat(self, coords):
         # Get backbone coordinates.
