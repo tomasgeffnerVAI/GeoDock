@@ -157,25 +157,30 @@ class GeoDock(pl.LightningModule):
 
         # Loss
         # losses = self.loss(output, batch)
-        losses = self.loss(output, label_coords, label_rotat, label_trans, sep)
+        losses = self.loss(output, label_coords, label_rotat, label_trans, sep, self.training)
         intra_loss = losses["intra_loss"]
         inter_loss = losses["inter_loss"]
         dist_loss = losses["dist_loss"]
         lddt_loss = losses["lddt_loss"]
         violation_loss = losses["violation_loss"]
 
-        if self.current_epoch < 5:
-            loss = intra_loss + 0.3 * dist_loss + 0.01 * lddt_loss
-        elif self.current_epoch < 10:
-            loss = intra_loss + inter_loss + 0.3 * dist_loss + 0.01 * lddt_loss
+        if not self.training:
+            # validation
+            loss = intra_loss + inter_loss
+        
         else:
-            loss = (
-                intra_loss
-                + inter_loss
-                + violation_loss
-                + 0.3 * dist_loss
-                + 0.01 * lddt_loss
-            )
+            if self.current_epoch < 5:
+                loss = intra_loss + 0.3 * dist_loss + 0.01 * lddt_loss
+            elif self.current_epoch < 10:
+                loss = intra_loss + inter_loss + 0.3 * dist_loss + 0.01 * lddt_loss
+            else:
+                loss = (
+                    intra_loss
+                    + inter_loss
+                    + violation_loss
+                    + 0.3 * dist_loss
+                    + 0.01 * lddt_loss
+                )
 
         losses.update({"loss": loss})
 

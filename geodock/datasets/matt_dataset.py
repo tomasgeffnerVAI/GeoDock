@@ -56,13 +56,15 @@ class GeoDockDataset(data.Dataset):
         
         if dataset == "pinder_toyexample_train":
             self.data_dir = "/home/celine/GeoDock_data/train"
-            self.file_list = [f.path for f in os.scandir(self.data_dir) if f.is_dir()]
-            self.file_list = self.file_list[::50]  # TODO clusters
+            self.file_list = [f.path for f in os.scandir(self.data_dir) if f.is_dir()]  # TODO: clusters
+            # L = len(self.file_list)  # These lines for training with 90%
+            # self.file_list = self.file_list[:int(9 * L / 10)]
         
         if dataset == "pinder_toyexample_val":
             self.data_dir = "/home/celine/GeoDock_data/train"
-            self.file_list = [f.path for f in os.scandir(self.data_dir) if f.is_dir()]
-            self.file_list = self.file_list[::5000]  # TODO clusters
+            self.file_list = [f.path for f in os.scandir(self.data_dir) if f.is_dir()]  # TODO: clusters
+            # L = len(self.file_list)  # These line for validation with 10%
+            # self.file_list = self.file_list[int(9 * L / 10):]
 
         # This to download: model, alphabet = torch.hub.load("facebookresearch/esm:main", "esm2_t33_650M_UR50D")
         _, alphabet = torch.hub.load("facebookresearch/esm:main", "esm2_t33_650M_UR50D")

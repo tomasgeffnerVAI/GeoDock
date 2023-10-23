@@ -2,6 +2,7 @@
 #   Modified from https://github.com/aqlaboratory/openfold/blob/main/openfold/utils/loss.py
 ###
 
+import random
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -320,7 +321,7 @@ class GeoDockLoss(nn.Module):
         super(GeoDockLoss, self).__init__()
 
     # def forward(self, out: GeoDockOutput, batch):
-    def forward(self, out: GeoDockOutput, label_coords, label_rotat, label_trans, sep):
+    def forward(self, out: GeoDockOutput, label_coords, label_rotat, label_trans, sep, is_training):
         pred_coords = out.coords
         pred_rotat = out.rotat
         pred_trans = out.trans
@@ -328,18 +329,29 @@ class GeoDockLoss(nn.Module):
         pred_fape = get_fape(pred_coords, pred_rotat, pred_trans)
         label_fape = get_fape(label_coords, label_rotat, label_trans)
 
+        # Here fix if randomly clamping 90/10 as suggested by Matt
+        d_clamp_intra = 10.0 if is_training else None
+        d_clamp_inter = 30.0 if is_training else None
+
+        # Here clamp loss only 90 per cent of the time
+        if is_training:
+            if random.uniform(0, 1) > 0.9:
+                d_clamp_intra = None
+            if random.uniform(0, 1) > 0.9:
+                d_clamp_inter = None
+
         loss_fns = {
             "intra_loss": lambda: intra_fape_loss(
                 pred=pred_fape,
                 label=label_fape,
                 sep=sep,
-                d_clamp=10.0,
+                d_clamp=d_clamp_intra,
             ),
             "inter_loss": lambda: inter_fape_loss(
                 pred=pred_fape,
                 label=label_fape,
                 sep=sep,
-                d_clamp=30.0,
+                d_clamp=d_clamp_inter,
             ),
             "dist_loss": lambda: distogram_loss(
                 logits=out.dist_logits,

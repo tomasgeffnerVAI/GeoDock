@@ -1,0 +1,8 @@
+1- clusters
+   For the validation set just choose randomly 10% of the training data (10% of the clusters)
+
+2- Clamp loss 90/10 as suggested by Matt? Added around line line 331 in loss.py
+
+3- For evaluation, after training, we'll need to measure stuff I guess... Or generate PDB with outputs...
+
+4- Think about potentially fixing ESM embeddings (lowest priority)
