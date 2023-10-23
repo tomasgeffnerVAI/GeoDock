@@ -57,39 +57,72 @@ class GeoDockDataset(data.Dataset):
         if dataset == "pinder_toyexample_train":
             self.data_dir = "/home/celine/GeoDock_data/train"
             self.file_list = [f.path for f in os.scandir(self.data_dir) if f.is_dir()]
-            self.file_list = self.file_list[:50]
+            self.file_list = self.file_list[::50]  # TODO clusters
         
         if dataset == "pinder_toyexample_val":
             self.data_dir = "/home/celine/GeoDock_data/train"
             self.file_list = [f.path for f in os.scandir(self.data_dir) if f.is_dir()]
-            self.file_list = self.file_list[:20]
+            self.file_list = self.file_list[::5000]  # TODO clusters
 
         # This to download: model, alphabet = torch.hub.load("facebookresearch/esm:main", "esm2_t33_650M_UR50D")
         _, alphabet = torch.hub.load("facebookresearch/esm:main", "esm2_t33_650M_UR50D")
         self.batch_converter = alphabet.get_batch_converter()
 
+    # def get_decoy_receptor_ligand_pdbs(self, structure_root):
+    #     # return pdb paths for receptor and ligand chain
+    #     source_list = ['holo', 'apo/', 'apo/alt/', 'predicted/'] 
+    #     extension=["R.pdb","L.pdb"]
+    #     data_paths = dict()
+    #     for ext in extension:
+    #         random.shuffle(source_list)
+    #         for element in os.listdir(structure_root):
+    #             file_path = os.path.join(structure_root, element)
+    #             if not os.path.isdir(file_path):
+    #                 continue
+    #             #print(file_path)
+
+    #             files_in_directory = os.listdir(file_path)
+    #             # check if file exists
+    #             matching_files = [file for file in files_in_directory if file.endswith(ext)]
+    #             if matching_files:
+    #                 #print("matched file", matching_files)
+    #                 # Load the first matching file (?) -> apo/alt is issue
+    #                 data_paths[ext] = os.path.join(file_path, matching_files[0])
+    #     return data_paths["R.pdb"], data_paths["L.pdb"]
+
+
     def get_decoy_receptor_ligand_pdbs(self, structure_root):
         # return pdb paths for receptor and ligand chain
-        source_list = ['holo', 'apo/', 'apo/alt/', 'predicted/'] 
-        extension=["R.pdb","L.pdb"]
+        source_list = ['holo', 'apo', 'predicted']
+        extension=["R.pdb", "L.pdb"]
         data_paths = dict()
         for ext in extension:
             random.shuffle(source_list)
-            for element in os.listdir(structure_root):
+            # for element in os.listdir(structure_root):
+            for element in source_list:
                 file_path = os.path.join(structure_root, element)
+                
+                # Just in case
                 if not os.path.isdir(file_path):
                     continue
-                #print(file_path)
+
+                # print(source_list, file_path)
 
                 files_in_directory = os.listdir(file_path)
+                if "element" == "apo":
+                    if "alt" in files_in_directory:
+                        files_in_directory = files_in_directory + os.listdir(os.path.join(file_path, "alt"))
+
                 # check if file exists
                 matching_files = [file for file in files_in_directory if file.endswith(ext)]
-                if matching_files:
-                    #print("matched file", matching_files)
-                    # Load the first matching file (?) -> apo/alt is issue
+                random.shuffle(matching_files)
+                if len(matching_files) > 0:
                     data_paths[ext] = os.path.join(file_path, matching_files[0])
-        # print(data_paths["R.pdb"], data_paths["L.pdb"])
+                    break
+        
         return data_paths["R.pdb"], data_paths["L.pdb"]
+
+
 
 
     def get_contiguous_crop(self, crop_len: int, n_res: int):
