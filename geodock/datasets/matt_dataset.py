@@ -8,13 +8,14 @@ from einops import repeat
 
 import sys
 
-# sys.path.append("/home/celine/GeoDock")
+sys.path.append("/home/celine/GeoDock")
 # sys.path.append("/home/tomasgeffner/GeoDock")
 from geodock.utils.pdb import save_PDB, place_fourth_atom
 from geodock.utils.coords6d import get_coords6d
 import numpy as np
 from geodock.datasets.helpers import get_item_from_pdbs_n_seq
 import geodock.datasets.protein_constants as pc
+import pandas as pd
 
 
 class GeoDockDataset(data.Dataset):
@@ -56,9 +57,13 @@ class GeoDockDataset(data.Dataset):
         
         if dataset == "pinder_toyexample_train":
             self.data_dir = "/home/celine/GeoDock_data/train"
-            self.file_list = [f.path for f in os.scandir(self.data_dir) if f.is_dir()]  # TODO: clusters
+            #self.file_list = [f.path for f in os.scandir(self.data_dir) if f.is_dir()]  # TODO: clusters
             # L = len(self.file_list)  # These lines for training with 90%
             # self.file_list = self.file_list[:int(9 * L / 10)]
+            cluster_file_path = "/home/celine/GeoDock_data/train_clusters.tsv"
+            df =  pd.read_csv(cluster_file_path, sep="\t", header=None, names=["cluster", "pdbs"]) # todo pass cluster file
+            self.file_list =df["cluster"].tolist()            
+
         
         if dataset == "pinder_toyexample_val":
             self.data_dir = "/home/celine/GeoDock_data/train"
@@ -69,6 +74,8 @@ class GeoDockDataset(data.Dataset):
         # This to download: model, alphabet = torch.hub.load("facebookresearch/esm:main", "esm2_t33_650M_UR50D")
         _, alphabet = torch.hub.load("facebookresearch/esm:main", "esm2_t33_650M_UR50D")
         self.batch_converter = alphabet.get_batch_converter()
+
+
 
     # def get_decoy_receptor_ligand_pdbs(self, structure_root):
     #     # return pdb paths for receptor and ligand chain
@@ -125,8 +132,6 @@ class GeoDockDataset(data.Dataset):
         return data_paths["R.pdb"], data_paths["L.pdb"]
 
 
-
-
     def get_contiguous_crop(self, crop_len: int, n_res: int):
         """Get a contiguous interval to crop"""
         if crop_len < 0:
@@ -135,7 +140,19 @@ class GeoDockDataset(data.Dataset):
         start = random.randint(0, (end - crop_len)) if end > crop_len else start
         return start, min(end, start + crop_len)
     
+    
     def _get_item(self, idx: int):
+        cluster_file_path = "/home/celine/GeoDock_data/train_clusters.tsv"
+        #processed_file_path = 'graph_data/graphs' #if we want we can only include processed files
+        #processed_files = set({os.path.splitext(x)[0].replace("ligand_","").replace("receptor_",""): x for x in os.listdir(processed_file_path)[:200] if x.endswith(".bin")})
+        cluster_df = pd.read_csv(cluster_file_path, sep="\t", header=None, names=["cluster", "pdbs"]) # todo pass cluster file            
+        cluster_df["pdbs"] = cluster_df["pdbs"].apply(lambda x: [y for y in x.split(";")])
+        #cluster_df["pdbs"] = cluster_df["pdbs"].apply(lambda x: [y for y in x if y in processed_files])
+        cluster_df = cluster_df[cluster_df["pdbs"].apply(len) > 0]
+        self.file_list = [np.random.choice(x) for x in cluster_df['pdbs'] if x]
+        #print(len(self.file_list), self.file_list[0:3])
+
+
         # Get info from file_list
         _id = self.file_list[idx]
 

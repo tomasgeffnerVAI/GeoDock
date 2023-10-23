@@ -11,6 +11,8 @@ from geodock.model.modules.iterative_transformer import IterativeTransformer
 from geodock.utils.loss import GeoDockLoss
 from geodock.utils.crop import crop_features, crop_targets
 
+from typing import Any, Dict
+
 
 
 class GeoDock(pl.LightningModule):
@@ -225,6 +227,19 @@ class GeoDock(pl.LightningModule):
             weight_decay=self.weight_decay,
         )
         return optimizer
+    
+    def on_save_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
+        self.remove_esm_params(checkpoint)
+
+    def remove_esm_params(self, checkpoint: Dict[str, Any]) -> None:
+        # remove ESMEmbedding parameters
+        del_keys = []
+        for k in checkpoint["state_dict"]:
+            if "ESMEmbedding.model" in k:
+                del_keys.append(k)
+        # log.info(f"Removing {len(del_keys)} keys for ESM from checkpoint")
+        for k in del_keys:
+            checkpoint["state_dict"].pop(k)
 
 
 if __name__ == "__main__":
