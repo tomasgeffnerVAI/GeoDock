@@ -26,7 +26,7 @@ work_dir: /home/celine/GeoDock #${hydra:runtime.cwd}
 
 # path to folder with data
 # data_dir: /home/tomasgeffner/pinder_copy #${work_dir}/data
-data_dir: /home/celine/GeoDock_data/train #${work_dir}/data
+data_dir: /home/celine/pinder-copy/ #${work_dir}/data
 
 # path to ckpt
 # ckpt_path: /home/tomasgeffner/checkpoint_geodock/weights_ours.chk
@@ -48,3 +48,6 @@ seed: 0
 # name of the run is accessed by loggers
 # should be used along with experiment mode
 name: null
+
+trainer:
+  devices: [0,1,2,3]

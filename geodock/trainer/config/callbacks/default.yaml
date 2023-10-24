@@ -8,3 +8,6 @@ model_checkpoint:
   dirpath: "checkpoints/"
   filename: "epoch_{epoch:03d}"
   auto_insert_metric_name: False
+
+grad_norm:
+  _target_: geodock.model.GeoDock.GradNormCallback

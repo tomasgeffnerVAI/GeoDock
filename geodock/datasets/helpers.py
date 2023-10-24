@@ -332,7 +332,7 @@ def map_seq_to_pdb(
     pdbfile,
     chain_id: Optional[str] = None,
     maxMisMatches=None,
-    minMatchRatio=0.5,
+    minMatchRatio=0.8, # -> change "ratio" (for the Cs here: this is 50% -.-), minimum chain length
 ):
     """Maps sequence to a pdb file,
       selecting the sequence from chain with best match.
@@ -344,7 +344,7 @@ def map_seq_to_pdb(
      the number of mismtaches and matches
     """
     # maxMisMatches = max(5, default(maxMisMatches, int(0.1 * len(sequence))))
-    maxMisMatches = max(15, default(maxMisMatches, int(0.1 * len(sequence))))
+    maxMisMatches =10# max(15, default(maxMisMatches, int(0.1 * len(sequence))))
     if not os.path.isfile(pdbfile):
         # pylint: disable-next=broad-exception-raised
         raise Exception("ERROR: the pdb file does not exist: ", pdbfile)
@@ -387,7 +387,7 @@ def map_seq_to_pdb(
         )
         return None, None, None, None, None, None
 
-    if maxMatches < min(30.0, minMatchRatio * len(sequence)):
+    if maxMatches < min(30.0, minMatchRatio * min(len(sequence),len(bestPDBSeq))):
         print(
             f"ERROR: there are only {maxMatches} matches on query sequence, "
             f"less than {minMatchRatio} of its length from PDB file: {pdbfile}\n"

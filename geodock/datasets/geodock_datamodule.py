@@ -51,6 +51,7 @@ class GeoDockDataModule(pl.LightningDataModule):
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
             shuffle=True,
+            prefetch_factor=2,
         )
 
     def val_dataloader(self):
@@ -60,6 +61,7 @@ class GeoDockDataModule(pl.LightningDataModule):
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
             shuffle=False,
+            prefetch_factor=2,
         )
 
     def test_dataloader(self):
@@ -69,4 +71,5 @@ class GeoDockDataModule(pl.LightningDataModule):
             num_workers=self.num_workers,
             pin_memory=self.pin_memory,
             shuffle=False,
+            prefetch_factor=2,
         )

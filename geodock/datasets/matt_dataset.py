@@ -8,7 +8,7 @@ from einops import repeat
 
 import sys
 
-sys.path.append("/home/celine/GeoDock")
+#sys.path.append("/home/celine/GeoDock")
 # sys.path.append("/home/tomasgeffner/GeoDock")
 from geodock.utils.pdb import save_PDB, place_fourth_atom
 from geodock.utils.coords6d import get_coords6d
@@ -49,8 +49,8 @@ class GeoDockDataset(data.Dataset):
         #     self.file_list = [line.strip() for line in lines]
 
         if dataset == "pinder_toyexample_test":
-            self.data_dir = "/home/tomasgeffner/pinder_copy/splits_v2/test"
-            self.data_list = "/home/tomasgeffner/pinder_copy/processed_test.txt"
+            self.data_dir = "/home/celine/pinder-public/splits/test"
+            self.data_list = "/home/celine/pinder-public/test.txt"
             with open(self.data_list, "r") as f:
                 lines = f.readlines()
             self.file_list = [line.strip() for line in lines]
@@ -72,8 +72,8 @@ class GeoDockDataset(data.Dataset):
         #     # self.file_list = self.file_list[int(9 * L / 10):]
 
         if dataset == "pinder_toyexample_train":
-            self.data_dir = "/home/celine/GeoDock_data/train"
-            cluster_file_path = "/home/celine/GeoDock_data/train_clusters.tsv"
+            self.data_dir = "/home/celine/pinder-public/splits/train"
+            cluster_file_path = "/home/celine/pinder-public/train_clusters.tsv"
             df = pd.read_csv(cluster_file_path, sep="\t", header=None, names=["cluster", "pdbs"])  # todo pass cluster file
             cluster_list = df["cluster"].tolist()
             L = len(cluster_list)
@@ -82,8 +82,8 @@ class GeoDockDataset(data.Dataset):
 
         
         if dataset == "pinder_toyexample_val":
-            self.data_dir = "/home/celine/GeoDock_data/train"
-            cluster_file_path = "/home/celine/GeoDock_data/train_clusters.tsv"
+            self.data_dir = "/home/celine/pinder-public/splits/train"
+            cluster_file_path = "/home/celine/pinder-public/train_clusters.tsv"
             df = pd.read_csv(cluster_file_path, sep="\t", header=None, names=["cluster", "pdbs"])  # todo pass cluster file
             cluster_list = df["cluster"].tolist()
             L = len(cluster_list)
@@ -171,6 +171,7 @@ class GeoDockDataset(data.Dataset):
         decoy_receptor_pdb, decoy_ligand_pdb = self.get_decoy_receptor_ligand_pdbs(
             structure_root
         )
+        
 
         data = get_item_from_pdbs_n_seq(
             seq_paths=[None, None],
@@ -285,8 +286,15 @@ class GeoDockDataset(data.Dataset):
                 example = None
             
             if example is None:
+            
                 idx = random.randint(0, len(self))
                 skipped+=1
+            else:
+                #print([k for k in example])
+                c1,c2 =len(example["seq1"]),len(example["seq2"])
+                if min(c1,c2)<30:
+                    example=None
+                idx = random.randint(0, len(self))
         
         hit += 1
         self.skipped_n_hit=(skipped,hit)

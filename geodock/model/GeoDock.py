@@ -10,6 +10,7 @@ from geodock.model.interface import GeoDockInput, GeoDockOutput
 from geodock.model.modules.iterative_transformer import IterativeTransformer
 from geodock.utils.loss import GeoDockLoss
 from geodock.utils.crop import crop_features, crop_targets
+from pytorch_lightning import Callback
 
 from typing import Any, Dict
 
@@ -52,6 +53,8 @@ class GeoDock(pl.LightningModule):
         # Loss
         self.loss = GeoDockLoss()
         self.esm, _ = torch.hub.load("facebookresearch/esm:main", "esm2_t33_650M_UR50D")
+        for p in self.esm.parameters():
+            p.requires_grad=False
 
     def forward(self, input: GeoDockInput):
         # Likely here call ESM embeddings on the fly
@@ -240,6 +243,29 @@ class GeoDock(pl.LightningModule):
         # log.info(f"Removing {len(del_keys)} keys for ESM from checkpoint")
         for k in del_keys:
             checkpoint["state_dict"].pop(k)
+
+
+class GradNormCallback(Callback):
+    """
+    Logs the gradient norm.
+    """
+    def on_before_optimizer_step(self, trainer, model, optim):
+        gradient_norm(model)
+    # def on_after_backward(self, trainer, model):
+    #    model.log("info/clipped_grad_norm", gradient_norm(model))
+
+def gradient_norm(model, check_missing: bool = True):
+    total_norm = 0.0
+    for name, p in model.named_parameters():
+        if not p.requires_grad:
+            continue
+        if p.grad is not None:
+            param_norm = p.grad.detach().data.norm(2)
+            total_norm += param_norm.item() ** 2
+        elif check_missing:
+            print(f"grad none : {name}")
+    total_norm = total_norm ** (1.0 / 2)
+    return total_norm
 
 
 if __name__ == "__main__":
