@@ -77,7 +77,7 @@ class GeoDockDataset(data.Dataset):
             df = pd.read_csv(cluster_file_path, sep="\t", header=None, names=["cluster", "pdbs"])  # todo pass cluster file
             cluster_list = df["cluster"].tolist()
             L = len(cluster_list)
-            self.cluster_list = cluster_list[:int(9 * L / 10)]
+            self.cluster_list = cluster_list[:int(.95 * L)]
             self.cluster_df = df
 
         
@@ -87,7 +87,7 @@ class GeoDockDataset(data.Dataset):
             df = pd.read_csv(cluster_file_path, sep="\t", header=None, names=["cluster", "pdbs"])  # todo pass cluster file
             cluster_list = df["cluster"].tolist()
             L = len(cluster_list)
-            self.cluster_list = cluster_list[int(9 * L / 10):]
+            self.cluster_list = cluster_list[int(0.95 * L):]
             self.cluster_df = df
 
         # This to download: model, alphabet = torch.hub.load("facebookresearch/esm:main", "esm2_t33_650M_UR50D")

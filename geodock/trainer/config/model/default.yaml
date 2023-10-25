@@ -5,5 +5,5 @@ edge_dim: 128
 gm_depth: 3
 sm_depth: 3
 num_iter: 4
-lr: 5e-5
+lr: 1e-4
 weight_decay: 0.0
