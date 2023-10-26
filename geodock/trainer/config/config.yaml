@@ -29,8 +29,8 @@ work_dir: /home/celine/GeoDock #${hydra:runtime.cwd}
 data_dir: /home/celine/pinder-copy/ #${work_dir}/data
 
 # path to ckpt
-# ckpt_path: /home/tomasgeffner/checkpoint_geodock/weights_ours.chk
-ckpt_path: null
+ckpt_path: /home/celine/logs/runs/2023-10-25/15-09-42/checkpoints/last.ckpt
+# ckpt_path: null
 
 # pretty print config at the start of the run using Rich library
 print_config: True

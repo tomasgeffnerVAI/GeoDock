@@ -101,7 +101,7 @@ class GeoDockDataset(data.Dataset):
 
     def get_decoy_receptor_ligand_pdbs(self, structure_root):
         # return pdb paths for receptor and ligand chain
-        source_list = ['holo', 'apo', 'predicted']
+        source_list = ['holo']#['holo', 'apo', 'predicted']
         extension=["R.pdb", "L.pdb"]
         data_paths = dict()
         for ext in extension:
@@ -292,7 +292,7 @@ class GeoDockDataset(data.Dataset):
             else:
                 #print([k for k in example])
                 c1,c2 =len(example["seq1"]),len(example["seq2"])
-                if min(c1,c2)<30:
+                if min(c1,c2)<30 or max(c1,c2)>1000:
                     example=None
                 idx = random.randint(0, len(self))
         
