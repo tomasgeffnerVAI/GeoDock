@@ -174,9 +174,9 @@ class GeoDock(pl.LightningModule):
             loss = intra_loss + inter_loss
         
         else:
-            if self.current_epoch < 3:  # 5
+            if self.current_epoch < 5:  # 5
                 loss = intra_loss + 0.3 * dist_loss + 0.01 * lddt_loss
-            elif self.current_epoch < 8:  # 10
+            elif self.current_epoch < 10:  # 10
                 loss = intra_loss + inter_loss + 0.3 * dist_loss + 0.01 * lddt_loss
             else:
                 loss = (

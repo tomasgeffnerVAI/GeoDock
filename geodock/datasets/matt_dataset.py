@@ -13,7 +13,8 @@ import sys
 from geodock.utils.pdb import save_PDB, place_fourth_atom
 from geodock.utils.coords6d import get_coords6d
 import numpy as np
-from geodock.datasets.helpers import get_item_from_pdbs_n_seq
+# from geodock.datasets.helpers import get_item_from_pdbs_n_seq
+from geodock.datasets.pinder_dataset_utils import get_example_from_pdbs_n_sequence, accept_example
 import geodock.datasets.protein_constants as pc
 import pandas as pd
 
@@ -172,17 +173,20 @@ class GeoDockDataset(data.Dataset):
             structure_root
         )
         
-
-        data = get_item_from_pdbs_n_seq(
+        # data = get_item_from_pdbs_n_seq(
+        data = get_example_from_pdbs_n_sequence(
             seq_paths=[None, None],
             decoy_pdb_paths=[decoy_receptor_pdb, decoy_ligand_pdb],
             target_pdb_paths=[target_pdb, target_pdb],
             # TODO: make atom types in same order as geodock!
             # atom_tys=tuple(pc.ALL_ATOMS),
             atom_tys=tuple(pc.BB_ATOMS_GEO),
-            decoy_chain_ids=[None,None],  # TODO: might be B, A?? RL!
+            decoy_chain_ids=["R","L"],
             target_chain_ids=["R","L"],
         )
+
+        if not accept_example(data):
+            return None
 
         if data is None:
             return None  ####################################################################################################################################
@@ -286,11 +290,10 @@ class GeoDockDataset(data.Dataset):
                 example = None
             
             if example is None:
-            
                 idx = random.randint(0, len(self))
                 skipped+=1
             else:
-                #print([k for k in example])
+                # print([k for k in example])
                 c1,c2 =len(example["seq1"]),len(example["seq2"])
                 if min(c1,c2)<30 or max(c1,c2)>1000:
                     example=None
