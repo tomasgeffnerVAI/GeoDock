@@ -14,6 +14,7 @@ def dock(
     model,
     do_refine=True,
     use_openmm=True,
+    true_coords=None,  # used to write pdb file
 ):
     #-----Docking Start-----#
     start_time = time()
@@ -43,6 +44,7 @@ def dock(
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
+    # Save predictions
     # get pdb
     out_pdb =  os.path.join(out_dir, f"{out_name}.pdb")
 
@@ -60,6 +62,26 @@ def dock(
         chains=chains,
         delims=delims
     )
+
+    # Save target (needed for chinking and masking)
+    if true_coords is not None:
+        # get pdb
+        out_pdb =  os.path.join(out_dir, f"{out_name}_target.pdb")
+
+        if os.path.exists(out_pdb):
+            os.remove(out_pdb)
+            print(f"File '{out_pdb}' deleted successfully.")
+        else:
+            print(f"File '{out_pdb}' does not exist.") 
+            
+        pdb_string = save_PDB_string(
+            out_pdb=out_pdb, 
+            coords=train_clusters, 
+            seq=seq1+seq2,
+            chains=chains,
+            delims=delims
+        )
+
     print(f"Completed docking in {time() - start_time:.2f} seconds.")
     #-----Docking end-----#
 
