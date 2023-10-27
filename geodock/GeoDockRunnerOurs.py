@@ -1,4 +1,5 @@
-import esm
+import os
+# import esm
 import torch
 from time import time
 # from geodock.utils.embed import embed
@@ -117,16 +118,53 @@ class GeoDockRunner():
 
 
 if __name__ == '__main__':
-    ckpt_file = "weights/dips_0.3.ckpt"
-    partner1 = "./data/test/a9_1a95.pdb1_3.dill_r_b_COMPLEX.pdb"
-    partner2 = "./data/test/a9_1a95.pdb1_3.dill_l_b_COMPLEX.pdb"
-    out_name = "test"
+    ckpt_file = "path/to/checkpoint"  # Add checkpoint here
+    
+    root = "/home/celine/pinder-public/splits/test"
+    dirs_complexes = [f.path for f in os.scandir(root) if f.is_dir()]
 
-    geodock = GeoDockRunner(ckpt_file=ckpt_file)
-    pred = geodock.dock(
-        partner1=partner1, 
-        partner2=partner2,
-        out_name=out_name,
-        do_refine=True,
-        use_openmm=True,
-    )
+    pdb_paths = []
+    modes_decoy = []
+    for d in dir_complexes:
+        print(f"Adding {d}")
+        root_complex = os.path.join(root, d)
+        complex_pdb = os.path.join(root_complex, d + ".pdb")
+        
+        if not os.path.isfile(complex_pdb):
+            print(f"{complex_pdb} not there")
+            continue
+
+        modes = ["apo", "holo", "predicted"]  # Ignore alt
+        for mode in modes:
+            root_decoys = os.path.join(root_complex, mode)
+            if not os.path.isdir(root_decoys):
+                print(f"Mode {mode} not available")
+                continue
+            
+            receptor_decoy_pdb = [f for f in os.path.listdir(root_decoys) if f.endswith("R.pdb")]
+            ligand_decoy_pdb = [f for f in os.path.listdir(root_decoys) if f.endswith("L.pdb")]
+            if len(receptor_decoy_pdb) == 0 or len(ligand_decoy_pdb) == 0:
+                print(f"Mode {mode} has {len(receptor_decoy_pdb)} receptors and {len(ligand_decoy_pdb)} ligands")
+                continue
+            receptor_decoy_pdb = receptor_decoy_pdb[0]
+            ligand_decoy_pdb = ligand_decoy_pdb[0]
+
+            pdb_paths.append((d, complex_pdb, receptor_decoy_pdb, ligand_decoy_pdb))
+            modes_decoy.append((mode, mode))  # For now same mode for both
+    
+    print("=====\nDocking\n=====\n")
+    for files, dmodes in zip(pdb_paths, modes_decoy):
+        complex_name, complex_pdb, receptor_pdb, ligand_pdb = files
+        mode_r, mode_l = dmodes
+        
+        out_name = f"{complex_name}_{mode_r}_{mode_l}|"
+
+        geodock = GeoDockRunner(ckpt_file=ckpt_file)
+        pred = geodock.dock(
+            decoy_receptor_pdb=receptor_pdb,
+            decoy_ligand_pdb=ligand_pdb,
+            target_pdb=complex_pdb,
+            out_name=out_name,
+            do_refine=True,  # This? Should we refine?
+            use_openmm=True,
+        )
