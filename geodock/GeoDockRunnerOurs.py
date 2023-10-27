@@ -165,6 +165,6 @@ if __name__ == '__main__':
             decoy_ligand_pdb=ligand_pdb,
             target_pdb=complex_pdb,
             out_name=out_name,
-            do_refine=True,  # This? Should we refine?
-            use_openmm=True,
+            do_refine=False,  # This? Should we refine? They had it to true
+            use_openmm=False,  # True
         )
