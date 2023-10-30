@@ -152,7 +152,7 @@ if __name__ == '__main__':
             pdb_paths.append((d, complex_pdb, receptor_decoy_pdb, ligand_decoy_pdb))
             modes_decoy.append((mode, mode))  # For now same mode for both
     
-    print("=====\nDocking\n=====\n")
+    print("======\nDocking\n======\n")
     for files, dmodes in zip(pdb_paths, modes_decoy):
         complex_name, complex_pdb, receptor_pdb, ligand_pdb = files
         mode_r, mode_l = dmodes
