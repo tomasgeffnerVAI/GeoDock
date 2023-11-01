@@ -1,3 +1,6 @@
+import sys
+sys.path.append("/home/tomasgeffner/GeoDock")
+
 import os
 # import esm
 import torch
@@ -9,14 +12,14 @@ from geodock.model.GeoDock import GeoDock
 # from esm.inverse_folding.util import load_coords
 from geodock.datasets.pinder_dataset_utils import get_example_from_pdbs_n_sequence, accept_example
 from geodock.model.interface import GeoDockInput
-
-
+import geodock.datasets.protein_constants as pc
 
 def get_example(
     decoy_receptor_pdb,
     decoy_ligand_pdb,
     target_pdb,
     batch_converter,
+    device,
 ):
     data = get_example_from_pdbs_n_sequence(
         seq_paths=[None, None],
@@ -49,13 +52,15 @@ def get_example(
         [x for x, m in zip(data["target"]["sequence"][1], chain2_mask) if m]
     )
 
-    input_pairs = get_pair_mats(coords, len(seq1))
+    decoy_coords = torch.cat([coords1_decoy, coords2_decoy], dim=0)
+
+    input_pairs = get_pair_mats(decoy_coords, len(seq1))
     input_contact = torch.zeros(*input_pairs.shape[:-1])[..., None] 
     pair_embeddings = torch.cat([input_pairs, input_contact], dim=-1).to(device)
 
     positional_embeddings = get_pair_relpos(len(seq1), len(seq2)).to(device)
 
-    *_, tokens = self.batch_converter([("1", seq1), ("2", seq2)])
+    *_, tokens = batch_converter([("1", seq1), ("2", seq2)])
 
     gd_input =  GeoDockInput(
         pair_embeddings=pair_embeddings.unsqueeze(0),
@@ -98,7 +103,8 @@ class GeoDockRunner():
             decoy_receptor_pdb,
             decoy_ligand_pdb,
             target_pdb,
-            batch_converter,
+            self.batch_converter,
+            device=self.device,
         )
 
         if gd_input is None:
@@ -107,9 +113,9 @@ class GeoDockRunner():
         # Start docking
         dock(
             out_name,
-            seq1,
-            seq2,
-            model_in,
+            gd_input.seq1[0],
+            gd_input.seq2[0],
+            gd_input,
             self.model,
             do_refine=do_refine,
             use_openmm=use_openmm,
@@ -118,18 +124,20 @@ class GeoDockRunner():
 
 
 if __name__ == '__main__':
-    ckpt_file = "path/to/checkpoint"  # Add checkpoint here
+    ckpt_file = "/home/tomasgeffner/GeoDock/last_geodock_32.ckpt"  # Add checkpoint here
     
-    root = "/home/celine/pinder-public/splits/test"
-    dirs_complexes = [f.path for f in os.scandir(root) if f.is_dir()]
+    # root = "/home/celine/pinder-public/splits/test"
+    root = "/home/tomasgeffner/pinder_test/test"
+    # dirs_complexes = [f.path for f in os.scandir(root) if f.is_dir()]
+    dirs_complexes = [f for f in os.listdir(root) if os.path.isdir(os.path.join(root, f))]
 
     pdb_paths = []
     modes_decoy = []
-    for d in dir_complexes:
+    for d in dirs_complexes:
         print(f"Adding {d}")
         root_complex = os.path.join(root, d)
         complex_pdb = os.path.join(root_complex, d + ".pdb")
-        
+
         if not os.path.isfile(complex_pdb):
             print(f"{complex_pdb} not there")
             continue
@@ -140,9 +148,9 @@ if __name__ == '__main__':
             if not os.path.isdir(root_decoys):
                 print(f"Mode {mode} not available")
                 continue
-            
-            receptor_decoy_pdb = [f for f in os.path.listdir(root_decoys) if f.endswith("R.pdb")]
-            ligand_decoy_pdb = [f for f in os.path.listdir(root_decoys) if f.endswith("L.pdb")]
+
+            receptor_decoy_pdb = [os.path.join(root_decoys, f) for f in os.listdir(root_decoys) if f.endswith("R.pdb")]
+            ligand_decoy_pdb = [os.path.join(root_decoys, f) for f in os.listdir(root_decoys) if f.endswith("L.pdb")]
             if len(receptor_decoy_pdb) == 0 or len(ligand_decoy_pdb) == 0:
                 print(f"Mode {mode} has {len(receptor_decoy_pdb)} receptors and {len(ligand_decoy_pdb)} ligands")
                 continue
@@ -151,15 +159,19 @@ if __name__ == '__main__':
 
             pdb_paths.append((d, complex_pdb, receptor_decoy_pdb, ligand_decoy_pdb))
             modes_decoy.append((mode, mode))  # For now same mode for both
-    
+
     print("======\nDocking\n======\n")
+    geodock = GeoDockRunner(ckpt_file=ckpt_file)
+    count = 0
     for files, dmodes in zip(pdb_paths, modes_decoy):
+        count += 1
+        if count >= 10:
+            break
         complex_name, complex_pdb, receptor_pdb, ligand_pdb = files
         mode_r, mode_l = dmodes
         
-        out_name = f"{complex_name}_{mode_r}_{mode_l}|"
+        out_name = f"{complex_name}_{mode_r}_{mode_l}"
 
-        geodock = GeoDockRunner(ckpt_file=ckpt_file)
         pred = geodock.dock(
             decoy_receptor_pdb=receptor_pdb,
             decoy_ligand_pdb=ligand_pdb,

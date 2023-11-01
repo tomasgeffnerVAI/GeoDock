@@ -1,6 +1,6 @@
 1. conda create env
 
-2. pip install geodock (from inside the main GeoDock directory), with the conda env activated
+NO - 2. pip install geodock (from inside the main GeoDock directory), with the conda env activated - NO
 
 3. I followed the installed dependencies at https://colab.research.google.com/github/Graylab/GeoDock/blob/main/GeoDock.ipynb
 but done from the terminal
@@ -38,3 +38,7 @@ CUDA = format_cuda_version(CUDA_version)
 !pip install py3Dmol
 """
 
+>>> TORCH
+'2.0.1'
+>>> CUDA
+'cu118'

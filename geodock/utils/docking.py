@@ -20,7 +20,7 @@ def dock(
     start_time = time()
 
     # get prediction
-    model_out = model(model_in)
+    model_out = model(model_in, crop_feats=False)
 
     # coords and plddt
     coords = model_out.coords.squeeze()
@@ -40,13 +40,14 @@ def dock(
     assert len(seq1) + len(seq2) == total_len
 
     # output dir
-    out_dir = './'        
+    out_dir = '/home/tomasgeffner/GeoDock/geodock/outputs/'
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
     # Save predictions
     # get pdb
     out_pdb =  os.path.join(out_dir, f"{out_name}.pdb")
+    print(f"Saving {out_pdb} file.")
 
     if os.path.exists(out_pdb):
         os.remove(out_pdb)
@@ -65,18 +66,24 @@ def dock(
 
     # Save target (needed for chinking and masking)
     if true_coords is not None:
+        # Concate coordinates
+        full_true_coords = torch.cat([get_full_coords(true_coords[0]), get_full_coords(true_coords[1])], dim=0)
+
+
         # get pdb
         out_pdb =  os.path.join(out_dir, f"{out_name}_target.pdb")
+        print(f"Saving {out_pdb} file.")
 
         if os.path.exists(out_pdb):
             os.remove(out_pdb)
-            print(f"File '{out_pdb}' deleted successfully.")
-        else:
-            print(f"File '{out_pdb}' does not exist.") 
-            
+            # print(f"File '{out_pdb}' deleted successfully.")
+        # else:
+        #     print(f"File '{out_pdb}' does not exist.") 
+        # print(coords1.shape, coords2.shape)
+        assert full_coords.shape == full_true_coords.shape, "Shapes of predicted and true"
         pdb_string = save_PDB_string(
             out_pdb=out_pdb, 
-            coords=train_clusters, 
+            coords=full_true_coords, 
             seq=seq1+seq2,
             chains=chains,
             delims=delims

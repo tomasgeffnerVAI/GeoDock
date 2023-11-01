@@ -1,7 +1,7 @@
-import esm
+# import esm
 import torch
 import torch.nn.functional as F
-from esm.inverse_folding.util import load_coords
+# from esm.inverse_folding.util import load_coords
 from geodock.utils.coords6d import get_coords6d
 from geodock.model.interface import GeoDockInput
 

@@ -56,7 +56,7 @@ class GeoDock(pl.LightningModule):
         for p in self.esm.parameters():
             p.requires_grad=False
 
-    def forward(self, input: GeoDockInput):
+    def forward(self, input: GeoDockInput, crop_feats: bool = True):
         # Likely here call ESM embeddings on the fly
         # Stuff is batched / collated, so has an extra 1 in front of everything
 
@@ -84,12 +84,13 @@ class GeoDock(pl.LightningModule):
 
         # print(protein1_embeddings.shape, protein2_embeddings.shape, pair_embeddings.shape, positional_embeddings.shape)
 
-        protein1_embeddings, protein2_embeddings, pair_embeddings, positional_embeddings = crop_features(
-            protein1_embeddings,
-            protein2_embeddings,
-            pair_embeddings,
-            positional_embeddings,
-        )
+        if crop_feats:
+            protein1_embeddings, protein2_embeddings, pair_embeddings, positional_embeddings = crop_features(
+                protein1_embeddings,
+                protein2_embeddings,
+                pair_embeddings,
+                positional_embeddings,
+            )
 
         # print(protein1_embeddings.shape, protein2_embeddings.shape, pair_embeddings.shape, positional_embeddings.shape)
 
