@@ -8,8 +8,6 @@ from einops import repeat
 
 import sys
 
-#sys.path.append("/home/celine/GeoDock")
-# sys.path.append("/home/tomasgeffner/GeoDock")
 from geodock.utils.pdb import save_PDB, place_fourth_atom
 from geodock.utils.coords6d import get_coords6d
 import numpy as np
@@ -18,11 +16,31 @@ from geodock.datasets.pinder_dataset_utils import get_example_from_pdbs_n_sequen
 import geodock.datasets.protein_constants as pc
 import pandas as pd
 
+torch.multiprocessing.set_sharing_strategy("file_system")
+
+def exists(x):
+    return x is not None
+
+
+def default(x, y):
+    return x if exists(x) else y
+
+
+def identity(x):
+    return x
+
+
+def item(x: Union[str, List[str]]) -> Union[str, List[str]]:
+    """Return first item in list if len==1 else whole list."""
+    if isinstance(x, str):
+        return x
+    return x if len(x) > 1 else x[0]
+
 
 class GeoDockDataset(data.Dataset):
     def __init__(
         self,
-        dataset: str = "pinder_toyexample_train",  # DQ why here and below?
+        dataset: str = "pinder_toyexample_train",
         out_pdb: bool = False,
         out_png: bool = False,
         is_training: bool = True,
@@ -41,14 +59,6 @@ class GeoDockDataset(data.Dataset):
         self.count = count
         self.use_Cb = use_Cb
 
-
-        # if dataset == "pinder_toyexample_train":
-        #     self.data_dir = "/home/tomasgeffner/pinder_copy/splits_v2/train"
-        #     self.data_list = "/home/tomasgeffner/pinder_copy/processed_train.txt"
-        #     with open(self.data_list, "r") as f:
-        #         lines = f.readlines()
-        #     self.file_list = [line.strip() for line in lines]
-
         if dataset == "pinder_toyexample_test":
             self.data_dir = "/home/celine/pinder-public/splits/test"
             self.data_list = "/home/celine/pinder-public/test.txt"
@@ -56,22 +66,6 @@ class GeoDockDataset(data.Dataset):
                 lines = f.readlines()
             self.file_list = [line.strip() for line in lines]
         
-        # if dataset == "pinder_toyexample_train":
-        #     self.data_dir = "/home/celine/GeoDock_data/train"
-        #     #self.file_list = [f.path for f in os.scandir(self.data_dir) if f.is_dir()]  # TODO: clusters
-        #     # L = len(self.file_list)  # These lines for training with 90%
-        #     # self.file_list = self.file_list[:int(9 * L / 10)]
-        #     cluster_file_path = "/home/celine/GeoDock_data/train_clusters.tsv"
-        #     df =  pd.read_csv(cluster_file_path, sep="\t", header=None, names=["cluster", "pdbs"]) # todo pass cluster file
-        #     self.file_list =df["cluster"].tolist()            
-
-        
-        # if dataset == "pinder_toyexample_val":
-        #     self.data_dir = "/home/celine/GeoDock_data/train"
-        #     self.file_list = [f.path for f in os.scandir(self.data_dir) if f.is_dir()]  # TODO: clusters
-        #     # L = len(self.file_list)  # These line for validation with 10%
-        #     # self.file_list = self.file_list[int(9 * L / 10):]
-
         if dataset == "pinder_toyexample_train":
             self.data_dir = "/home/celine/pinder-public/splits/train"
             cluster_file_path = "/home/celine/pinder-public/train_clusters.tsv"
@@ -81,7 +75,6 @@ class GeoDockDataset(data.Dataset):
             self.cluster_list = cluster_list[:int(.95 * L)]
             self.cluster_df = df
 
-        
         if dataset == "pinder_toyexample_val":
             self.data_dir = "/home/celine/pinder-public/splits/train"
             cluster_file_path = "/home/celine/pinder-public/train_clusters.tsv"
@@ -142,25 +135,12 @@ class GeoDockDataset(data.Dataset):
     
     
     def _get_item(self, idx: int):
-        # cluster_file_path = "/home/celine/GeoDock_data/train_clusters.tsv"
-        # #processed_file_path = 'graph_data/graphs' #if we want we can only include processed files
-        # #processed_files = set({os.path.splitext(x)[0].replace("ligand_","").replace("receptor_",""): x for x in os.listdir(processed_file_path)[:200] if x.endswith(".bin")})
-        # cluster_df = pd.read_csv(cluster_file_path, sep="\t", header=None, names=["cluster", "pdbs"]) # todo pass cluster file            
-        # cluster_df["pdbs"] = cluster_df["pdbs"].apply(lambda x: [y for y in x.split(";")])
-        # #cluster_df["pdbs"] = cluster_df["pdbs"].apply(lambda x: [y for y in x if y in processed_files])
-        # cluster_df = cluster_df[cluster_df["pdbs"].apply(len) > 0]
-        # self.file_list = [np.random.choice(x) for x in cluster_df['pdbs'] if x]
-        # #print(len(self.file_list), self.file_list[0:3])
         
         cluster_name = self.cluster_list[idx]
         pdbs = self.cluster_df.loc[self.cluster_df['cluster'] == cluster_name, 'pdbs'].iloc[0]  # Each cluster has unique name this should be just a single element, hence the [0]
         pdbs = pdbs.split(";")
         _id = random.choice(pdbs)
 
-        # print(cluster_name, len(pdbs), pdbs[0], "\n====")
-
-        # # Get info from file_list
-        # _id = self.file_list[idx]
 
         # load example
         structure_root = os.path.join(self.data_dir, _id)
@@ -303,21 +283,6 @@ class GeoDockDataset(data.Dataset):
         self.skipped_n_hit=(skipped,hit)
         # print(skipped,hit)
         return example
-
-    # def __getitem__(self, idx: int):
-    #     example = None
-    #     skipped,hit = self.skipped_n_hit
-    #     while example is None:
-            
-    #         example = self._get_item(idx)
-    #         idx = random.randint(0, len(self))
-    #         if example is None:
-    #             skipped+=1
-            
-    #     hit+=1
-    #     self.skipped_n_hit=(skipped,hit)
-    #     # print(skipped,hit)
-    #     return example
 
     def get_rotat(self, coords):
         # Get backbone coordinates.
