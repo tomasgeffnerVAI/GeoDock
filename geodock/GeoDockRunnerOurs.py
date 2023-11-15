@@ -24,7 +24,8 @@ def get_example(
     data = get_example_from_pdbs_n_sequence(
         seq_paths=[None, None],
         decoy_pdb_paths=[decoy_receptor_pdb, decoy_ligand_pdb],
-        target_pdb_paths=[target_pdb, target_pdb],
+        # target_pdb_paths=[target_pdb, target_pdb],
+        target_pdb_paths=[decoy_receptor_pdb, decoy_ligand_pdb],
         # TODO: make atom types in same order as geodock!
         # atom_tys=tuple(pc.ALL_ATOMS),
         atom_tys=tuple(pc.BB_ATOMS_GEO),
@@ -72,6 +73,9 @@ def get_example(
 
     true_coords = (coords1_true, coords2_true)
 
+    if len(seq1) > 1200 or len(seq2) > 1200:
+        return None, None
+
     return gd_input, true_coords
 
 
@@ -82,7 +86,7 @@ class GeoDockRunner():
     def __init__(self, ckpt_file):
 
         # Check if gpu is available
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
 
         # Load GeoDock model
         self.model = GeoDock.load_from_checkpoint(ckpt_file, map_location=self.device).eval().to(self.device)
@@ -95,7 +99,9 @@ class GeoDockRunner():
         decoy_receptor_pdb,
         decoy_ligand_pdb,
         target_pdb,
-        out_name,
+        complex_name,
+        mode,
+        eval_set,
         do_refine=True,
         use_openmm=True,
     ):
@@ -112,7 +118,9 @@ class GeoDockRunner():
 
         # Start docking
         dock(
-            out_name,
+            complex_name,
+            mode,
+            eval_set,
             gd_input.seq1[0],
             gd_input.seq2[0],
             gd_input,
@@ -124,11 +132,13 @@ class GeoDockRunner():
 
 
 if __name__ == '__main__':
-    ckpt_file = "/home/tomasgeffner/GeoDock/last_geodock_32.ckpt"  # Add checkpoint here
+    ckpt_file = "/home/celine/logs/runs/2023-10-26/15-56-36/checkpoints/last.ckpt"
+
+    eval_set = "pinder_xl"  # pinder_af2, pinder_s, pinder_xl
     
-    # root = "/home/celine/pinder-public/splits/test"
-    root = "/home/tomasgeffner/pinder_test/test"
-    # dirs_complexes = [f.path for f in os.scandir(root) if f.is_dir()]
+    root = "/home/tomasgeffner/data_tomas_pinder"
+    root = os.path.join(root, eval_set)
+
     dirs_complexes = [f for f in os.listdir(root) if os.path.isdir(os.path.join(root, f))]
 
     pdb_paths = []
@@ -165,18 +175,21 @@ if __name__ == '__main__':
     count = 0
     for files, dmodes in zip(pdb_paths, modes_decoy):
         count += 1
-        if count >= 10:
-            break
+        # if count >= 10:
+        #     break
         complex_name, complex_pdb, receptor_pdb, ligand_pdb = files
         mode_r, mode_l = dmodes
-        
-        out_name = f"{complex_name}_{mode_r}_{mode_l}"
 
-        pred = geodock.dock(
-            decoy_receptor_pdb=receptor_pdb,
-            decoy_ligand_pdb=ligand_pdb,
-            target_pdb=complex_pdb,
-            out_name=out_name,
-            do_refine=False,  # This? Should we refine? They had it to true
-            use_openmm=False,  # True
-        )
+        try:
+            pred = geodock.dock(
+                decoy_receptor_pdb=receptor_pdb,
+                decoy_ligand_pdb=ligand_pdb,
+                target_pdb=complex_pdb,
+                complex_name=complex_name,
+                mode=mode_r,  # Both the same for now
+                eval_set=eval_set,
+                do_refine=False,
+                use_openmm=False,
+            )
+        except Exception as e:
+            print(e)

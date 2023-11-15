@@ -7,7 +7,9 @@ from geodock.utils.pdb import save_PDB_string, place_fourth_atom
 
 
 def dock(
-    out_name,
+    complex_name,
+    mode,
+    eval_set,
     seq1, 
     seq2,
     model_in,
@@ -29,7 +31,7 @@ def dock(
     full_coords = torch.cat([get_full_coords(coords1), get_full_coords(coords2)], dim=0)
 
     # seq
-    seq_dict = {'A': seq1, 'B': seq2}
+    seq_dict = {'R': seq1, 'L': seq2}
     chains = list(seq_dict.keys())
     delims = np.cumsum([len(s) for s in seq_dict.values()]).tolist()
 
@@ -40,20 +42,23 @@ def dock(
     assert len(seq1) + len(seq2) == total_len
 
     # output dir
-    out_dir = '/home/tomasgeffner/GeoDock/geodock/outputs/'
+    out_dir = f"/home/tomasgeffner/GeoDock/{eval_set}/geodock/"
+    out_dir = os.path.join(out_dir, complex_name)
+    out_dir = os.path.join(out_dir, f"{mode}_decoys")
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
     # Save predictions
     # get pdb
+    out_name = "model_1"
     out_pdb =  os.path.join(out_dir, f"{out_name}.pdb")
     print(f"Saving {out_pdb} file.")
 
     if os.path.exists(out_pdb):
         os.remove(out_pdb)
-        print(f"File '{out_pdb}' deleted successfully.")
-    else:
-        print(f"File '{out_pdb}' does not exist.") 
+    #     print(f"File '{out_pdb}' deleted successfully.")
+    # else:
+    #     print(f"File '{out_pdb}' does not exist.") 
         
     pdb_string = save_PDB_string(
         out_pdb=out_pdb, 
@@ -64,30 +69,30 @@ def dock(
         delims=delims
     )
 
-    # Save target (needed for chinking and masking)
-    if true_coords is not None:
-        # Concate coordinates
-        full_true_coords = torch.cat([get_full_coords(true_coords[0]), get_full_coords(true_coords[1])], dim=0)
+    # # Save target (needed for chinking and masking)
+    # if true_coords is not None:
+    #     # Concate coordinates
+    #     full_true_coords = torch.cat([get_full_coords(true_coords[0]), get_full_coords(true_coords[1])], dim=0)
 
 
-        # get pdb
-        out_pdb =  os.path.join(out_dir, f"{out_name}_target.pdb")
-        print(f"Saving {out_pdb} file.")
+    #     # get pdb
+    #     out_pdb =  os.path.join(out_dir, f"{out_name}_target.pdb")
+    #     print(f"Saving {out_pdb} file.")
 
-        if os.path.exists(out_pdb):
-            os.remove(out_pdb)
-            # print(f"File '{out_pdb}' deleted successfully.")
-        # else:
-        #     print(f"File '{out_pdb}' does not exist.") 
-        # print(coords1.shape, coords2.shape)
-        assert full_coords.shape == full_true_coords.shape, "Shapes of predicted and true"
-        pdb_string = save_PDB_string(
-            out_pdb=out_pdb, 
-            coords=full_true_coords, 
-            seq=seq1+seq2,
-            chains=chains,
-            delims=delims
-        )
+    #     if os.path.exists(out_pdb):
+    #         os.remove(out_pdb)
+    #         # print(f"File '{out_pdb}' deleted successfully.")
+    #     # else:
+    #     #     print(f"File '{out_pdb}' does not exist.") 
+    #     # print(coords1.shape, coords2.shape)
+    #     assert full_coords.shape == full_true_coords.shape, "Shapes of predicted and true"
+    #     pdb_string = save_PDB_string(
+    #         out_pdb=out_pdb, 
+    #         coords=full_true_coords, 
+    #         seq=seq1+seq2,
+    #         chains=chains,
+    #         delims=delims
+    #     )
 
     print(f"Completed docking in {time() - start_time:.2f} seconds.")
     #-----Docking end-----#
