@@ -32,7 +32,6 @@ def dock(
     seq_dict = {'A': seq1, 'B': seq2}
     chains = list(seq_dict.keys())
     delims = np.cumsum([len(s) for s in seq_dict.values()]).tolist()
-
     # get total len
     total_len = full_coords.size(0)
 
@@ -40,7 +39,8 @@ def dock(
     assert len(seq1) + len(seq2) == total_len
 
     # output dir
-    out_dir = '/home/tomasgeffner/GeoDock/geodock/outputs/'
+    out_dir = '/home/celine/celine_output_not_aligned2/'
+    #out_dir = '/home/celine/celine_output_not_aligned2/'
     if not os.path.exists(out_dir):
         os.makedirs(out_dir)
 
@@ -51,9 +51,9 @@ def dock(
 
     if os.path.exists(out_pdb):
         os.remove(out_pdb)
-        print(f"File '{out_pdb}' deleted successfully.")
-    else:
-        print(f"File '{out_pdb}' does not exist.") 
+        # print(f"File '{out_pdb}' deleted successfully.")
+    # else:
+        # print(f"File '{out_pdb}' does not exist.") 
         
     pdb_string = save_PDB_string(
         out_pdb=out_pdb, 
@@ -72,7 +72,7 @@ def dock(
 
         # get pdb
         out_pdb =  os.path.join(out_dir, f"{out_name}_target.pdb")
-        print(f"Saving {out_pdb} file.")
+        # print(f"Saving {out_pdb} file.")
 
         if os.path.exists(out_pdb):
             os.remove(out_pdb)

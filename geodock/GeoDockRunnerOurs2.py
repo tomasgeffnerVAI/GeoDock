@@ -16,6 +16,7 @@ from geodock.model.GeoDock import GeoDock
 from geodock.datasets.pinder_dataset_utils import get_example_from_pdbs_n_sequence, accept_example
 from geodock.model.interface import GeoDockInput
 import geodock.datasets.protein_constants as pc
+import pandas as pd
 def get_example(
     decoy_receptor_pdb,
     decoy_ligand_pdb,
@@ -117,19 +118,31 @@ class GeoDockRunner():
 if __name__ == '__main__':
     ckpt_file = "/home/celine/logs/runs/2023-10-26/15-56-36/checkpoints/last.ckpt"  # Add checkpoint here
     # root = "/home/celine/pinder-public/splits/test"
-    root = "/home/celine/data_run_inference/test"
+    root = "/home/celine/data_run_inference/"
     # dirs_complexes = [f.path for f in os.scandir(root) if f.is_dir()]
-    dirs_complexes = [f for f in os.listdir(root) if os.path.isdir(os.path.join(root, f))]
+
+    df = pd.read_csv("/home/celine/index.csv")
+    filtered_df = df[(df['pinder_xl'] == True) | (df['pinder_af2'] == True)]
+    id_values = filtered_df['id'].tolist()
+
+    #print(id_values)
+
+    # dirs_complexes = [f for f in os.listdir(root) if os.path.isdir(os.path.join(root, f))]
+    dirs_complexes = [f for f in id_values if os.path.isdir(os.path.join(root, f))]
+   
     pdb_paths = []
     modes_decoy = []
     for d in dirs_complexes:
         print(f"Adding {d}")
         root_complex = os.path.join(root, d)
         complex_pdb = os.path.join(root_complex, d + ".pdb")
+        
         if not os.path.isfile(complex_pdb):
             print(f"{complex_pdb} not there")
             continue
+        
         modes = ["apo", "holo", "predicted"]  # Ignore alt
+        
         for mode in modes:
             root_decoys = os.path.join(root_complex, mode)
             if not os.path.isdir(root_decoys):
@@ -151,7 +164,7 @@ if __name__ == '__main__':
     count = 0
     for files, dmodes in zip(pdb_paths, modes_decoy):
         count += 1
-        # if count >= 5:
+        # if count >= 10:
         #     break
         
         complex_name, complex_pdb, receptor_pdb, ligand_pdb = files
