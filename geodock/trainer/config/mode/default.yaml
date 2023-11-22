@@ -7,7 +7,7 @@ default_mode: True
 hydra:
   # default output paths for all file logs
   run:
-    dir: logs/runs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: GeoDock/logs/runs/${now:%Y-%m-%d}/${now:%H-%M-%S}
   sweep:
-    dir: logs/multiruns/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: Geodock/logs/multiruns/${now:%Y-%m-%d}/${now:%H-%M-%S}
     subdir: ${hydra.job.num}
