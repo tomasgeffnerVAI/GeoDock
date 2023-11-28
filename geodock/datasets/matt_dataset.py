@@ -8,7 +8,7 @@ from einops import repeat
 
 import sys
 
-#sys.path.append("/home/celine/GeoDock")
+sys.path.append("/home/celine/GeoDock")
 # sys.path.append("/home/tomasgeffner/GeoDock")
 from geodock.utils.pdb import save_PDB, place_fourth_atom
 from geodock.utils.coords6d import get_coords6d
@@ -49,8 +49,11 @@ class GeoDockDataset(data.Dataset):
         #     self.file_list = [line.strip() for line in lines]
 
         if dataset == "pinder_toyexample_test":
-            self.data_dir = "/home/celine/pinder-public/splits/test"
-            self.data_list = "/home/celine/pinder-public/test.txt"
+            # self.data_dir = "/home/celine/pinder-public/splits/test"
+            # self.data_list = "/home/celine/pinder-public/test.txt"
+            self.data_dir = "/home/matthewmcpartlon/pinder_iclr/test"
+            self.data_list = "/home/matthewmcpartlon/pinder_iclr/test.tsv"
+
             with open(self.data_list, "r") as f:
                 lines = f.readlines()
             self.file_list = [line.strip() for line in lines]
@@ -72,18 +75,23 @@ class GeoDockDataset(data.Dataset):
         #     # self.file_list = self.file_list[int(9 * L / 10):]
 
         if dataset == "pinder_toyexample_train":
-            self.data_dir = "/home/celine/pinder-public/splits/train"
-            cluster_file_path = "/home/celine/pinder-public/train_clusters.tsv"
+            # self.data_dir = "/home/celine/pinder-public/splits/train"
+            # cluster_file_path = "/home/celine/pinder-public/train_clusters.tsv"
+            self.data_dir = "/home/matthewmcpartlon/pinder_iclr/train"
+            cluster_file_path = "/home/matthewmcpartlon/pinder_iclr/train_clusters.tsv"
+
             df = pd.read_csv(cluster_file_path, sep="\t", header=None, names=["cluster", "pdbs"])  # todo pass cluster file
             cluster_list = df["cluster"].tolist()
             L = len(cluster_list)
             self.cluster_list = cluster_list[:int(.95 * L)]
             self.cluster_df = df
-
         
         if dataset == "pinder_toyexample_val":
-            self.data_dir = "/home/celine/pinder-public/splits/train"
-            cluster_file_path = "/home/celine/pinder-public/train_clusters.tsv"
+            self.data_dir = "/home/matthewmcpartlon/pinder_iclr/train"
+            cluster_file_path = "/home/matthewmcpartlon/pinder_iclr/train_clusters.tsv"
+            # self.data_dir = "/home/celine/pinder-public/splits/train"
+            # cluster_file_path = "/home/celine/pinder-public/train_clusters.tsv"
+
             df = pd.read_csv(cluster_file_path, sep="\t", header=None, names=["cluster", "pdbs"])  # todo pass cluster file
             cluster_list = df["cluster"].tolist()
             L = len(cluster_list)

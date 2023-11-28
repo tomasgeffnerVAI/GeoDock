@@ -2,8 +2,8 @@
 
 wandb:
   _target_: pytorch_lightning.loggers.wandb.WandbLogger
-  project: "geodock"
-  name: 1121_holo_training #${name}
+  project: "updates" #"geodock"
+  name: 1128_training #1121_holo_training #${name}
   save_dir: "."
   offline: False # set True to store all logs only locally
   id: null # pass correct id to resume experiment!

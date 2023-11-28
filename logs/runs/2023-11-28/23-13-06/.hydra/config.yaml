@@ -1,0 +1,63 @@
+work_dir: /home/celine/GeoDock
+data_dir: /home/matthewmcpartlon/pinder_iclr/
+ckpt_path: null
+print_config: true
+ignore_warnings: true
+test_after_training: false
+seed: 0
+name: null
+trainer:
+  devices:
+  - 0
+  _target_: pytorch_lightning.Trainer
+  accelerator: auto
+  min_epochs: 1
+  max_epochs: 1000000
+  num_sanity_val_steps: 1
+  gradient_clip_val: 0.1
+  check_val_every_n_epoch: 1
+  accumulate_grad_batches: 4
+model:
+  _target_: geodock.model.GeoDock.GeoDock
+  node_dim: 256
+  edge_dim: 128
+  gm_depth: 3
+  sm_depth: 3
+  num_iter: 4
+  lr: 0.0001
+  weight_decay: 0.0
+datamodule:
+  _target_: geodock.datasets.matt_dataset.GeoDockDataModule
+  train_set: pinder_toyexample_train
+  val_set: pinder_toyexample_val
+  test_set: pinder_toyexample_test
+  batch_size: 1
+  num_workers: 6
+  pin_memory: true
+callbacks:
+  model_checkpoint:
+    _target_: pytorch_lightning.callbacks.ModelCheckpoint
+    monitor: val/loss
+    mode: min
+    save_top_k: 1
+    save_last: true
+    verbose: false
+    dirpath: checkpoints/
+    filename: epoch_{epoch:03d}
+    auto_insert_metric_name: false
+  grad_norm:
+    _target_: geodock.model.GeoDock.GradNormCallback
+logger:
+  wandb:
+    _target_: pytorch_lightning.loggers.wandb.WandbLogger
+    project: updates
+    name: 1128_training
+    save_dir: .
+    offline: false
+    id: null
+    log_model: false
+    prefix: ''
+    job_type: train
+    group: ''
+    tags: []
+default_mode: true

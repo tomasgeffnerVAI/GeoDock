@@ -26,13 +26,13 @@ work_dir: /home/celine/GeoDock #${hydra:runtime.cwd}
 
 # path to folder with data
 # data_dir: /home/tomasgeffner/pinder_copy #${work_dir}/data
-data_dir: /home/celine/pinder-copy/ #${work_dir}/data
+data_dir: /home/matthewmcpartlon/pinder_iclr/ #/home/celine/pinder-copy/ #${work_dir}/data
 
 # path to ckpt
-ckpt_path: /home/celine/GeoDock/logs/runs/2023-11-21/15-09-42/checkpoints/last.ckpt
+# ckpt_path: /home/celine/GeoDock/logs/runs/2023-11-28/15-09-42/checkpoints/last.ckpt
 # ckpt_path: /home/celine/GeoDock/logs/runs/2023-10-25/15-09-42/checkpoints/last.ckpt
 
-# ckpt_path: null
+ckpt_path: null
 
 # pretty print config at the start of the run using Rich library
 print_config: True
@@ -52,4 +52,4 @@ seed: 0
 name: null
 
 trainer:
-  devices: [0,1,2,3,4,5,6,7]
+  devices: [0] #,1,2]
