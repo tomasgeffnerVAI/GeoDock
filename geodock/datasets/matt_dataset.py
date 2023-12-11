@@ -52,7 +52,7 @@ class GeoDockDataset(data.Dataset):
             # self.data_dir = "/home/celine/pinder-public/splits/test"
             # self.data_list = "/home/celine/pinder-public/test.txt"
             self.data_dir = "/home/matthewmcpartlon/pinder_iclr/test"
-            self.data_list = "/home/matthewmcpartlon/pinder_iclr/test.tsv"
+            self.data_list = "/home/matthewmcpartlon/pinder_iclr/test_clusters.tsv"
 
             with open(self.data_list, "r") as f:
                 lines = f.readlines()
@@ -170,26 +170,38 @@ class GeoDockDataset(data.Dataset):
         # _id = self.file_list[idx]
 
         # load example
-        structure_root = os.path.join(self.data_dir, _id)
-        target_pdb = next(
-           filter(lambda x: x.endswith("pdb"), os.listdir(structure_root))
-        )
-        target_pdb = os.path.join(structure_root,target_pdb)
+        # structure_root = os.path.join(self.data_dir, _id + ".pdb")
+        structure_root = os.path.join(self.data_dir, _id) + ".pdb"
+
+        # structure_root = os.path.join(self.data_dir, _id)
+
+        # print("structure_root", structure_root)
+        # target_pdb = next(
+        #    filter(lambda x: x.endswith(".pdb"), os.listdir(structure_root))
+        # )
+        # target_pdb = os.path.join(structure_root,target_pdb)
+        # print("target_pdb", target_pdb)
+        # target_pdb = structure_root
+
+        # decoy_receptor_pdb, decoy_ligand_pdb = self.get_decoy_receptor_ligand_pdbs(
+        #     structure_root
+        # )
         
-        decoy_receptor_pdb, decoy_ligand_pdb = self.get_decoy_receptor_ligand_pdbs(
-            structure_root
-        )
-        
+        # exit()
 
         data = get_item_from_pdbs_n_seq(
             seq_paths=[None, None],
-            decoy_pdb_paths=[decoy_receptor_pdb, decoy_ligand_pdb],
-            target_pdb_paths=[target_pdb, target_pdb],
+            decoy_pdb_paths=[structure_root, structure_root],
+            target_pdb_paths=[structure_root, structure_root],
+
+            # decoy_pdb_paths=[decoy_receptor_pdb, decoy_ligand_pdb],
+            # target_pdb_paths=[target_pdb, target_pdb],
             # TODO: make atom types in same order as geodock!
             # atom_tys=tuple(pc.ALL_ATOMS),
             atom_tys=tuple(pc.BB_ATOMS_GEO),
             decoy_chain_ids=[None,None],  # TODO: might be B, A?? RL!
-            target_chain_ids=["R","L"],
+            # target_chain_ids=["R","L"],
+            target_chain_ids=[None,None],
         )
 
         if data is None:

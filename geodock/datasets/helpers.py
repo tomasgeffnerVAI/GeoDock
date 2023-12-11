@@ -171,15 +171,20 @@ def extract_pdb_seq_by_chain(
     model = structure[0]
     pdbseqs, residueLists, chains = [], [], []
     for chain in model:
-        if chain.get_id() != default(chain_id, chain.get_id()):
-            continue
+        
+        # if chain.get_id() != default(chain_id, chain.get_id()):
+        #     print("drei.eins", len(chain), chain.get_id() != default(chain_id, chain.get_id()))
+        #     continue
+        # ask matt !
         residues = list(chain.get_residues())
+        
         pdbseq, residueList = extract_pdb_seq_from_residues(residues)
         pdbseqs.append(pdbseq)
         residueLists.append(residueList)
         chains.append(chain)
+    
     #print("hello", model)
-    # print([chain.get_id() for chain in chains])
+    #print([chain.get_id() for chain in chains])
     return pdbseqs, residueLists, chains
 
 
@@ -198,8 +203,10 @@ def extract_pdb_seq_from_pdb_file(
     # print(pdbfile, chain_id)
     name = default(name, os.path.basename(pdbfile)[:-4])
     structure = get_structure(pdbfile=pdbfile, name=name)
-    #print(len(structure))
-    return extract_pdb_seq_by_chain(structure, chain_id=chain_id)
+
+    pdbseqs, residueLists, chains = extract_pdb_seq_by_chain(structure, chain_id=chain_id)
+
+    return pdbseqs, residueLists, chains
 
 
 def extract_seq_from_pdb_n_chain_id(
@@ -334,6 +341,7 @@ def map_seq_to_pdb(
     maxMisMatches=None,
     minMatchRatio=0.8, # -> change "ratio" (for the Cs here: this is 50% -.-), minimum chain length
 ):
+
     """Maps sequence to a pdb file,
       selecting the sequence from chain with best match.
     :param sequence: sequence (string)
@@ -350,9 +358,9 @@ def map_seq_to_pdb(
         raise Exception("ERROR: the pdb file does not exist: ", pdbfile)
 
     # extract PDB sequences by chains
-    pdbseqs, residueLists, chains = extract_pdb_seq_from_pdb_file(
-        pdbfile, chain_id=chain_id
-    )
+    pdbseqs, residueLists, chains = extract_pdb_seq_from_pdb_file(pdbfile, chain_id=chain_id)
+    # print("vier", len(pdbseqs), len(residueLists), len(chains))
+    # exit()
 
     bestPDBSeq = None
     bestMapping = None
@@ -439,6 +447,7 @@ def extract_coords_from_seq_n_pdb(
     maxMisMatches=5,
     minMatchRatio=0.5,
 ):
+    
     """
     :param sequence: sequence to map from
     :param pdbfile: pdb file to extract from
@@ -512,13 +521,13 @@ def extract_atom_coords_n_mask_tensors(
         residue (1..n) in the input sequence
     """
     assert seq is not None, "must provide sequence to extract coords and masks"
+
     out = extract_coords_from_seq_n_pdb(
         sequence=seq,
         pdbfile=pdb_path,
         atom_tys=atom_tys,
         chain_id=chain_id,
     )
-
     atom_coords, _, numMisMatches, *_ = out
     atom_mask = None
     #print(atom_coords is None)
@@ -578,8 +587,16 @@ def get_item_from_pdbs_n_seq(
     train on unbound chain conformations (decoy data) and predict bound
     conformations (native data).
     """
-    decoy_chain_ids = default(decoy_chain_ids, [None] * len(decoy_pdb_paths))
-    target_chain_ids = default(target_chain_ids, [None] * len(target_pdb_paths)) # check!
+
+    # get chains + seqs
+    # print("hi", decoy_pdb_paths[0])
+    seq_list, chain_list = safe_load_sequence(None, decoy_pdb_paths[0], chain_id=None) # check! which sequence
+
+    decoy_chain_ids = default(chain_list, [None] * len(decoy_pdb_paths))
+    target_chain_ids = default(chain_list, [None] * len(target_pdb_paths)) # check!
+    # decoy_chain_ids = default(decoy_chain_ids, [None] * len(decoy_pdb_paths))
+    # target_chain_ids = default(target_chain_ids, [None] * len(target_pdb_paths)) # check!
+
     batch = dict(
         metadata=dict(
             atom_tys=list(atom_tys),
@@ -588,29 +605,39 @@ def get_item_from_pdbs_n_seq(
             seq_paths=seq_paths,
         )
     )
+
     target_data, decoy_data = defaultdict(list), defaultdict(list)
-    for seq_path, decoy_pdb, tgt_pdb, decoy_cid, tgt_cid in zip(
-        seq_paths,
+    for seq, decoy_pdb, tgt_pdb, decoy_cid, tgt_cid in zip(
+        seq_list,
         decoy_pdb_paths,
         target_pdb_paths,
-        decoy_chain_ids,
-        target_chain_ids,
+        chain_list, # decoy
+        chain_list, # target
     ):
-        seq = safe_load_sequence(seq_path, decoy_pdb, chain_id=decoy_cid) # check! which sequence
+    # for seq_path, decoy_pdb, tgt_pdb, decoy_cid, tgt_cid in zip(
+    #     seq_paths,
+    #     decoy_pdb_paths,
+    #     target_pdb_paths,
+    #     decoy_chain_ids,
+    #     target_chain_ids,
+    # ):
+
+        # seq = safe_load_sequence(seq_path, decoy_pdb, chain_id=decoy_cid) # check! which sequence
         decoy_data = append_chain_to_data(
             decoy_data,
             pdb_path=decoy_pdb,
             seq=seq,
             atom_tys=atom_tys,
-            chain_id=decoy_cid,
+            chain_id=decoy_cid.get_id(),
         )
         target_data = append_chain_to_data(
             target_data,
             pdb_path=default(tgt_pdb, decoy_pdb),
             seq=seq,
             atom_tys=atom_tys,
-            chain_id=tgt_cid,
+            chain_id=tgt_cid.get_id(),
         )
+
         if decoy_data is None or target_data is None:
             return None  ##########################################################################################
         if default(tgt_pdb, decoy_pdb) == decoy_pdb:
@@ -636,10 +663,12 @@ def append_chain_to_data(
     atom_tys: Tuple[str],
     chain_id: Optional[str] = None,
 ) -> Dict:
+    
     # target coords and mask
     crds, mask = extract_atom_coords_n_mask_tensors(
         seq, pdb_path=pdb_path, atom_tys=atom_tys, chain_id=chain_id
     )
+
     seq_encoding = torch.tensor([pc.AA_TO_INDEX[x] for x in seq])
     canonical_mask = aa_to_canonical_atom_mask(atom_tys)[seq_encoding]
 
@@ -694,12 +723,17 @@ def safe_load_sequence(
     if exists(seq_path):
         pdbseqs = [load_fasta_file(seq_path)]
     else:
-        # print(pdb_path)
-        pdbseqs, *_ = extract_pdb_seq_from_pdb_file(pdb_path, chain_id=chain_id)
-        # print(pdbseqs)
-    if len(pdbseqs) > 1 and not exists(chain_id):
+        # print("hello", pdb_path)
+        # pdbseqs, *_ = extract_pdb_seq_from_pdb_file(pdb_path, chain_id=chain_id)
+        pdbseqs, _, chains = extract_pdb_seq_from_pdb_file(pdb_path, chain_id=chain_id)
+        # print(pdbseqs, chains)
+        # exit()
+    # if len(pdbseqs) > 1 and not exists(chain_id):
+    #     print(f"[WARNING]: Multiple chains found for pdb: {pdb_path}")
+    if len(pdbseqs) > 2 and not exists(chain_id):
         print(f"[WARNING]: Multiple chains found for pdb: {pdb_path}")
-    return pdbseqs[0]
+
+    return pdbseqs, chains #pdbseqs[0]
 
 
 def collate(batch: List[Optional[Dict]]) -> List[Dict]:

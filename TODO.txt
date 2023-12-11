@@ -1,5 +1,0 @@
-1- clusters
-
-3- For evaluation, after training, we'll need to measure stuff I guess... Or generate PDB with outputs...
-
-4- Think about potentially fixing ESM embeddings (lowest priority)
