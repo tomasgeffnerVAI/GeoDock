@@ -7,6 +7,8 @@ from geodock.utils.pdb import save_PDB_string, place_fourth_atom
 
 
 def dock(
+    complex_id,
+    mode_r,
     out_name,
     seq1, 
     seq2,
@@ -39,10 +41,26 @@ def dock(
     assert len(seq1) + len(seq2) == total_len
 
     # output dir
-    out_dir = '/home/celine/celine_output_not_aligned2/'
+    # out_dir = '/home/celine/geodock_inference_240113/pinder_af2'
+    out_dir = '/home/celine/geodock_inference_240113/pinder_s/geodock'
+
     #out_dir = '/home/celine/celine_output_not_aligned2/'
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
+
+    out_complex_path = os.path.join(out_dir, complex_id)
+    # check if folder for ID exists
+    if not os.path.exists(out_complex_path):
+        # print(f"path {out_complex_path} does not exists")
+        os.makedirs(out_complex_path)
+    # else:
+    #     print(f"path {out_complex_path} exists")
+    
+    out_mode_path = os.path.join(out_complex_path, f'{mode_r}_decoys')
+    # check if folder for apo/holo/predicted exists
+    if not os.path.exists(out_mode_path):
+        # print(f"path {out_mode_path} does not exists")
+        os.makedirs(os.path.join(out_mode_path))
+    # else:
+    #     print(f"path {out_mode_path} exists")
 
     # Save predictions
     # get pdb
@@ -64,30 +82,29 @@ def dock(
         delims=delims
     )
 
-    # Save target (needed for chinking and masking)
-    if true_coords is not None:
-        # Concate coordinates
-        full_true_coords = torch.cat([get_full_coords(true_coords[0]), get_full_coords(true_coords[1])], dim=0)
+    # # Save target (needed for chinking and masking)
+    # if true_coords is not None:
+    #     # Concate coordinates
+    #     full_true_coords = torch.cat([get_full_coords(true_coords[0]), get_full_coords(true_coords[1])], dim=0)
 
+    #     # get pdb
+    #     out_pdb =  os.path.join(out_dir, f"{out_name}_target.pdb")
+    #     # print(f"Saving {out_pdb} file.")
 
-        # get pdb
-        out_pdb =  os.path.join(out_dir, f"{out_name}_target.pdb")
-        # print(f"Saving {out_pdb} file.")
-
-        if os.path.exists(out_pdb):
-            os.remove(out_pdb)
-            # print(f"File '{out_pdb}' deleted successfully.")
-        # else:
-        #     print(f"File '{out_pdb}' does not exist.") 
-        # print(coords1.shape, coords2.shape)
-        assert full_coords.shape == full_true_coords.shape, "Shapes of predicted and true"
-        pdb_string = save_PDB_string(
-            out_pdb=out_pdb, 
-            coords=full_true_coords, 
-            seq=seq1+seq2,
-            chains=chains,
-            delims=delims
-        )
+    #     if os.path.exists(out_pdb):
+    #         os.remove(out_pdb)
+    #         # print(f"File '{out_pdb}' deleted successfully.")
+    #     # else:
+    #     #     print(f"File '{out_pdb}' does not exist.") 
+    #     # print(coords1.shape, coords2.shape)
+    #     assert full_coords.shape == full_true_coords.shape, "Shapes of predicted and true"
+    #     pdb_string = save_PDB_string(
+    #         out_pdb=out_pdb, 
+    #         coords=full_true_coords, 
+    #         seq=seq1+seq2,
+    #         chains=chains,
+    #         delims=delims
+    #     )
 
     print(f"Completed docking in {time() - start_time:.2f} seconds.")
     #-----Docking end-----#
