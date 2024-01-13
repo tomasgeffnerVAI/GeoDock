@@ -1,3 +1,7 @@
+# new
+logs/
+geodock_logs.zip
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
