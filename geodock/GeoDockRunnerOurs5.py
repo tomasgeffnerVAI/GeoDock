@@ -29,7 +29,6 @@ def get_example(
     data = get_example_from_pdbs_n_sequence(
         seq_paths=[None, None],
         decoy_pdb_paths=[decoy_receptor_pdb, decoy_ligand_pdb],
-        # target_pdb_paths=[decoy_receptor_pdb, decoy_ligand_pdb],
         target_pdb_paths=[target_pdb, target_pdb],
         # TODO: make atom types in same order as geodock!
         # atom_tys=tuple(pc.ALL_ATOMS),
@@ -38,7 +37,7 @@ def get_example(
         target_chain_ids=["R", "L"],
     )
 
-    # NOTE: the follow muuust be commented out or apo/predicted might not work
+    # NOTE: the follow must be commented out or apo/predicted might not work
 
     # if not accept_example(data):
     #     print("not accepted!")
