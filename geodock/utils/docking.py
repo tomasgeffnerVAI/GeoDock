@@ -21,28 +21,10 @@ def dock(
     #-----Docking Start-----#
     start_time = time()
 
-    # get prediction
-    model_out = model(model_in, crop_feats=False)
-
-    # coords and plddt
-    coords = model_out.coords.squeeze()
-    plddt = compute_plddt(model_out.lddt_logits).squeeze()
-    coords1, coords2 = coords.split([len(seq1), len(seq2)], dim=0)
-    full_coords = torch.cat([get_full_coords(coords1), get_full_coords(coords2)], dim=0)
-
-    # seq
-    seq_dict = {'A': seq1, 'B': seq2}
-    chains = list(seq_dict.keys())
-    delims = np.cumsum([len(s) for s in seq_dict.values()]).tolist()
-    # get total len
-    total_len = full_coords.size(0)
-
-    # check seq len
-    assert len(seq1) + len(seq2) == total_len
-
+    
     # output dir
     # out_dir = '/home/celine/geodock_inference_240113/pinder_af2'
-    out_dir = '/home/celine/geodock_inference_240113/pinder_af2/geodock'
+    out_dir = '/home/celine/geodock_inference_240116/pinder_xl/geodock_norefinement_cpu'
 
     #out_dir = '/home/celine/celine_output_not_aligned2/'
 
@@ -62,10 +44,34 @@ def dock(
     # else:
     #     print(f"path {out_mode_path} exists")
 
+
+    # get prediction
+    model_out = model(model_in, crop_feats=False)
+
+    # coords and plddt
+    coords = model_out.coords.squeeze()
+    plddt = compute_plddt(model_out.lddt_logits).squeeze()
+    coords1, coords2 = coords.split([len(seq1), len(seq2)], dim=0)
+    full_coords = torch.cat([get_full_coords(coords1), get_full_coords(coords2)], dim=0)
+
+    # seq
+    seq_dict = {'A': seq1, 'B': seq2}
+    chains = list(seq_dict.keys())
+    delims = np.cumsum([len(s) for s in seq_dict.values()]).tolist()
+    # get total len
+    total_len = full_coords.size(0)
+
+    # check seq len
+    assert len(seq1) + len(seq2) == total_len
+
+
     # Save predictions
     # get pdb
     out_pdb =  os.path.join(out_dir, f"{out_name}.pdb")
     print(f"Saving {out_pdb} file.")
+    # with open("/home/celine/geodock_inference_240113/pinder_af2/log_refinement_gpu.txt", "a") as file:
+    #     file.write(f"Saving {out_pdb} file.")
+
 
     if os.path.exists(out_pdb):
         os.remove(out_pdb)
@@ -106,6 +112,9 @@ def dock(
     #         delims=delims
     #     )
 
+    # with open("/home/celine/geodock_inference_240113/pinder_af2/log_refinement_gpu.txt", "a") as file:
+    #     file.write(f"Completed docking in {time() - start_time:.2f} seconds.")
+
     print(f"Completed docking in {time() - start_time:.2f} seconds.")
     #-----Docking end-----#
 
@@ -116,7 +125,8 @@ def dock(
             try:
                 from geodock.refine.openmm_ref import refine
                 refine_input = [out_pdb]
-            except:
+            except Exception as e:
+                print(e)
                 exit("OpenMM not installed. Please install OpenMM to use refinement.")
         else:
             try:
@@ -126,6 +136,9 @@ def dock(
                 exit("PyRosetta not installed. Please install PyRosetta to use refinement.")
 
         refine(*refine_input)
+        # with open("/home/celine/geodock_inference_240113/pinder_af2/log_refinement_gpu.txt", "a") as file:
+        #     file.write(f"Completed refining in {time() - start_time:.2f} seconds.")
+
         print(f"Completed refining in {time() - start_time:.2f} seconds.")
     #-----Refine end-----#
 

@@ -37,6 +37,9 @@ def get_example(
         decoy_chain_ids=["R", "L"],
         target_chain_ids=["R", "L"],
     )
+
+    # NOTE: the follow muuust be commented out or apo/predicted might not work
+
     # if not accept_example(data):
     #     print("not accepted!")
     #     return None, None
@@ -71,6 +74,8 @@ def get_example(
         esm_tokens=tokens.unsqueeze(0),
     )
     true_coords = (coords1_true, coords2_true)
+
+    # NOTE: the following must be commented out because .-.
     
     # if len(seq1) > 1200 or len(seq2) > 1200:
     #     print("too long!")
@@ -132,69 +137,45 @@ class GeoDockRunner():
 
 if __name__ == '__main__':
 
-    print("======\nDocking\n======\n")
-
+    # Define modes
     testset = "pinder_xl"
-    print(f"Set: {testset}")
-
     refinement_mode = False
-    print(f"Refinement: {refinement_mode}" )
-
     run_mode = "CPU" #CPU
+    structure_modes = ["apo", "holo", "predicted"] #["holo", "apo", "predicted"]
+
+    # Load paths
+    ckpt_file = "/home/celine/GeoDock/logs/runs/2023-11-29/20-49-55/checkpoints/last.ckpt"  # Add checkpoint here
+    root = "/mnt/disks/pinder-us-east5-a-2024-01-09/pdbs"
+    # Load index file
+    df = pd.read_csv("/mnt/disks/pinder-us-east5-a-2024-01-09/index.csv.gz", compression='gzip')
+    
+    print("======\nDocking\n======\n")
+    print(f"Set: {testset}")
+    print(f"Refinement: {refinement_mode}" )
     print(f"Run mode: {run_mode}")
 
-
-    ckpt_file = "/home/celine/GeoDock/logs/runs/2023-11-29/20-49-55/checkpoints/last.ckpt"  # Add checkpoint here
-    # root = "/home/celine/pinder-public/splits/test"
-    # root = "/home/celine/data_run_inference/"
-    # root = "/mnt/disks/pinder-us-east5-a-2023-12-01/pdbs"
-    root = "/mnt/disks/pinder-us-east5-a-2024-01-09/pdbs"
-    # dirs_complexes = [f.path for f in os.scandir(root) if f.is_dir()]
-
-    df = pd.read_csv("/mnt/disks/pinder-us-east5-a-2024-01-09/index.csv.gz", compression='gzip')
-
-    modes = ["apo", "holo", "predicted"] #["holo", "apo", "predicted"]
-
+    # Generate lists of target/decoy paths and respective structure modes from index file
     pdb_paths = []
     modes_decoy = []
 
-    for mode in modes:
+    for mode in structure_modes:
 
         # load only certain test set with subgroup apo/holo/predicted
         filtered_df = df[(df[testset]) & (df[f'{mode}_R']) & (df[f'{mode}_L']) ] #| (df['pinder_af2'] == True)]
-        # load id of full complex
+        # load id of full complex (target)
         id_values = filtered_df['id'].tolist() #['7zvj__A1_O95461--7zvj__B1_O95461']
-        # if mode is "holo":
-        #     id_values = ['7zvj__A1_O95461--7zvj__B1_O95461']
-        # elif mode is "predicted":
-        #     id_values = ['7zvj__A1_O95461--7zvj__B1_O95461']
 
         # load ids of R/L
         id_values_R = filtered_df[f'{mode}_R_pdb'].tolist()
         id_values_L = filtered_df[f'{mode}_L_pdb'].tolist()
-        # id_values_R = filtered_df['holo_R_pdb'].tolist()
-        # id_values_L = filtered_df['holo_L_pdb'].tolist()
 
-        #print(id_values)
-
-        # sanity check that all R/L exist and are in the right order [does not work for apo, predicted!]
-        # for index, (id_value, id_R, id_L) in enumerate(zip(id_values, id_values_R, id_values_L)):
-        #     if id_R.replace("-R.pdb","") not in id_value:
-        #         print(mode, f"{id_R} with index {index} does not match")
-        #         print(index, (id_value, id_R, id_L))
-        #     if id_L.replace("-L.pdb","") not in id_value:
-        #         print(mode, f"{id_L} with index {index} does not match")
-        #         print(index, (id_value, id_R, id_L))            
-
-        # list of complex paths
-        # dirs_complexes = [f for f in os.listdir(root) if os.path.isdir(os.path.join(root, f))]
+        # list of complex paths (targets)
         dirs_complexes = [f + ".pdb" for f in id_values if os.path.isdir(os.path.join(root, f))]
         # list of R/L paths
         dirs_receptors = [f for f in id_values_R if os.path.isdir(os.path.join(root, f))]
         dirs_ligands = [f for f in id_values_L if os.path.isdir(os.path.join(root, f))]
 
-   
-        #for d in dirs_complexes:
+        # iterate over all complexes (targets):
         for index, (id_value, id_R, id_L) in enumerate(zip(id_values, id_values_R, id_values_L)):
 
             path_complex = os.path.join(os.path.join(root, id_value + ".pdb"))
@@ -216,31 +197,28 @@ if __name__ == '__main__':
             modes_decoy.append((mode, mode))  # For now same mode for both
         print(f"{mode} loaded. Processed {len(id_values)} complexes.")
 
-
+    # Load model
     geodock = GeoDockRunner(ckpt_file=ckpt_file, run_mode=run_mode)
+
+    # iterate over paths list
     count = 0
     for files, dmodes in zip(pdb_paths, modes_decoy):
         count += 1
-        # if count >= 10:
-        #     break
         
         complex_name, complex_pdb, receptor_pdb, ligand_pdb = files
 
+        # Check if files exists
         if not os.path.exists(receptor_pdb):
             print(f'{receptor_pdb} does not exist')
         if not os.path.exists(ligand_pdb):
             print(f'{ligand_pdb} does not exist')
             
-
         mode_r, mode_l = dmodes
-        # out_name = f"{complex_name}_{mode_r}_{mode_l}"
         out_name = f"{complex_name}/{mode_r}_decoys/model_1"
+
         print(count, "=======")
         print(mode_r, complex_name)
         print(receptor_pdb, ligand_pdb)
-
-        # with open("/home/celine/geodock_inference_240113/pinder_af2/log_refinement_gpu.txt", "a") as file:
-        #         file.write(f"----{count}, {complex_name}, {mode_r}----\n{receptor_pdb}, {ligand_pdb}\n")
         
         try:
             pred = geodock.dock(
@@ -250,10 +228,8 @@ if __name__ == '__main__':
                 decoy_ligand_pdb=ligand_pdb,
                 target_pdb=complex_pdb,
                 out_name=out_name,
-                do_refine=refinement_mode,  # This? Should we refine? They had it to true
-                use_openmm=refinement_mode,  # True
+                do_refine=refinement_mode,  # Original is true, but Matt said we dont need
+                use_openmm=refinement_mode,  # Original is true, but Matt said we dont need
             )
         except Exception as e:
-            # with open("/home/celine/geodock_inference_240113/pinder_af2/exception_log_refinement_gpu.txt", "a") as file:
-            #     file.write(f"--- {complex_name}, {mode_r} ---\n{e}\n")
             print(e)
