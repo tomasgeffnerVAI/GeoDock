@@ -43,29 +43,28 @@ def get_example(
     #     print("not accepted!")
     #     return None, None
     
-    chain1_mask = (
-        data["target"]["residue_mask"][0] & data["decoy"]["residue_mask"][0]
-    )
-    chain2_mask = (
-        data["target"]["residue_mask"][1] & data["decoy"]["residue_mask"][1]
-    )
-    coords1_true = data["target"]["coordinates"][0][chain1_mask]
-    coords2_true = data["target"]["coordinates"][1][chain2_mask]
+    # changed masks to only decoy
+    chain1_mask = data["decoy"]["residue_mask"][0]
+    chain2_mask = data["decoy"]["residue_mask"][1]
+    
+    # coords1_true = data["target"]["coordinates"][0][chain1_mask]
+    # coords2_true = data["target"]["coordinates"][1][chain2_mask]
+
     coords1_decoy = data["decoy"]["coordinates"][0][chain1_mask]
     coords2_decoy = data["decoy"]["coordinates"][1][chain2_mask]
-    
-    seq1 = "".join(
-        [x for x, m in zip(data["target"]["sequence"][0], chain1_mask) if m]
-    )
-    seq2 = "".join(
-        [x for x, m in zip(data["target"]["sequence"][1], chain2_mask) if m]
-    )
+
+    # changed sequence to decoy sequence
+    seq1 = "".join([x for x, m in zip(data["decoy"]["sequence"][0], chain1_mask) if m])
+    seq2 = "".join([x for x, m in zip(data["decoy"]["sequence"][1], chain2_mask) if m])
+
+    # Docking Input
     decoy_coords = torch.cat([coords1_decoy, coords2_decoy], dim=0)
     input_pairs = get_pair_mats(decoy_coords, len(seq1))
     input_contact = torch.zeros(*input_pairs.shape[:-1])[..., None]
     pair_embeddings = torch.cat([input_pairs, input_contact], dim=-1).to(device)
     positional_embeddings = get_pair_relpos(len(seq1), len(seq2)).to(device)
     *_, tokens = batch_converter([("1", seq1), ("2", seq2)])
+
     gd_input =  GeoDockInput(
         pair_embeddings=pair_embeddings.unsqueeze(0),
         positional_embeddings=positional_embeddings.unsqueeze(0),
@@ -73,7 +72,7 @@ def get_example(
         seq2=[seq2],
         esm_tokens=tokens.unsqueeze(0),
     )
-    true_coords = (coords1_true, coords2_true)
+    # true_coords = (coords1_true, coords2_true)
 
     # NOTE: the following must be commented out because .-.
     
@@ -81,7 +80,7 @@ def get_example(
     #     print("too long!")
     #     return None, None
     
-    return gd_input, true_coords
+    return gd_input #, true_coords
 
 class GeoDockRunner():
     """
@@ -112,13 +111,21 @@ class GeoDockRunner():
         do_refine=True,
         use_openmm=True,
     ):
-        gd_input, true_coords = get_example(
+        # gd_input, true_coords = get_example(
+        #     decoy_receptor_pdb,
+        #     decoy_ligand_pdb,
+        #     target_pdb,
+        #     self.batch_converter,
+        #     device=self.device,
+        # )
+        gd_input = get_example(
             decoy_receptor_pdb,
             decoy_ligand_pdb,
             target_pdb,
             self.batch_converter,
             device=self.device,
         )
+
         if gd_input is None:
             return
         # Start docking
@@ -132,15 +139,16 @@ class GeoDockRunner():
             self.model,
             do_refine=do_refine,
             use_openmm=use_openmm,
-            true_coords=true_coords,
+            true_coords=None
+            # true_coords=true_coords,
         )
 
 if __name__ == '__main__':
 
     # Define modes
-    testset = "pinder_xl"
+    testset = "pinder_af2"
     refinement_mode = False
-    run_mode = "CPU" #CPU
+    run_mode = "GPU" #CPU
     structure_modes = ["apo", "holo", "predicted"] #["holo", "apo", "predicted"]
 
     # Load paths
