@@ -146,9 +146,10 @@ class GeoDockRunner():
 if __name__ == '__main__':
 
     # Define modes
-    testset = "pinder_af2"
+    testset = "pinder_xl"
     refinement_mode = False
     run_mode = "GPU" #CPU
+
     structure_modes = ["apo", "holo", "predicted"] #["holo", "apo", "predicted"]
 
     # Load paths
@@ -240,4 +241,6 @@ if __name__ == '__main__':
                 use_openmm=refinement_mode,  # Original is true, but Matt said we dont need
             )
         except Exception as e:
+            with open("/home/celine/geodock_inference_240117/pinder_xl_gpu.txt", "a") as file:
+                file.write(f"--- {complex_name}, {mode_r} ---\n{e}\n")
             print(e)
