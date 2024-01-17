@@ -57,12 +57,14 @@ def get_example(
     seq2 = "".join(
         [x for x, m in zip(data["target"]["sequence"][1], chain2_mask) if m]
     )
+
     decoy_coords = torch.cat([coords1_decoy, coords2_decoy], dim=0)
     input_pairs = get_pair_mats(decoy_coords, len(seq1))
     input_contact = torch.zeros(*input_pairs.shape[:-1])[..., None]
     pair_embeddings = torch.cat([input_pairs, input_contact], dim=-1).to(device)
     positional_embeddings = get_pair_relpos(len(seq1), len(seq2)).to(device)
     *_, tokens = batch_converter([("1", seq1), ("2", seq2)])
+    
     gd_input =  GeoDockInput(
         pair_embeddings=pair_embeddings.unsqueeze(0),
         positional_embeddings=positional_embeddings.unsqueeze(0),
