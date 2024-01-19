@@ -146,7 +146,7 @@ class GeoDockRunner():
 if __name__ == '__main__':
 
     # Define modes
-    testset = "pinder_xl"
+    testset = "pinder_af2"
     refinement_mode = False
     run_mode = "GPU" #CPU
 
@@ -154,9 +154,10 @@ if __name__ == '__main__':
 
     # Load paths
     ckpt_file = "/home/celine/GeoDock/logs/runs/2023-11-29/20-49-55/checkpoints/last.ckpt"  # Add checkpoint here
+    # root = "/mnt/disks/gcs/pinder/2023-11/pdbs.zip"
     root = "/mnt/disks/pinder-us-east5-a-2024-01-09/pdbs"
     # Load index file
-    df = pd.read_csv("/mnt/disks/pinder-us-east5-a-2024-01-09/index.csv.gz", compression='gzip')
+    df = pd.read_csv("/home/celine/geodock_inference_240119/modified_apo_monomer_selections_pinder_test_011824.csv")
     
     print("======\nDocking\n======\n")
     print(f"Set: {testset}")

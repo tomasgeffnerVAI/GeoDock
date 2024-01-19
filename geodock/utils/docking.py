@@ -22,7 +22,7 @@ def dock(
     start_time = time()
 
     # output dir
-    out_dir = '/home/celine/geodock_inference_240117/pinder_xl_gpu'#geodock_norefinement_cpu'
+    out_dir = '/home/celine/geodock_inference_240119/apo_update_2'#geodock_norefinement_cpu'
     out_complex_path = os.path.join(out_dir, complex_id)
 
     # check if folder for ID exists
