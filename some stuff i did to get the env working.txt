@@ -1,3 +1,5 @@
+By Tomas:
+
 1. conda create env
 
 NO - 2. pip install geodock (from inside the main GeoDock directory), with the conda env activated - NO
