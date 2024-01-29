@@ -72,6 +72,7 @@ def get_example_from_pdbs_n_sequence(
     atom_tys = tuple(default(atom_tys, pc.ALL_ATOMS))
     decoy_chain_ids = default(decoy_chain_ids, [None] * len(decoy_pdb_paths))
     target_chain_ids = default(target_chain_ids, [None] * len(decoy_pdb_paths))
+
     batch = dict(
         metadata=dict(
             atom_tys=list(atom_tys),
@@ -80,7 +81,9 @@ def get_example_from_pdbs_n_sequence(
             seq_paths=seq_paths,
         )
     )
+
     target_data, decoy_data = defaultdict(list), defaultdict(list)
+
     for seq_path, decoy_pdb, tgt_pdb, decoy_cid, tgt_cid in zip(
         seq_paths,
         decoy_pdb_paths,
@@ -93,6 +96,8 @@ def get_example_from_pdbs_n_sequence(
             chain_id=decoy_cid if align_seq_to == "decoy" else tgt_cid,
         )
         seq = safe_load_sequence(seq_path, **aln_kwargs)
+        # print("Seq path + seq", seq_path, seq)
+
         decoy_data = append_chain_to_data(
             decoy_data,
             pdb_path=decoy_pdb,
@@ -100,6 +105,7 @@ def get_example_from_pdbs_n_sequence(
             atom_tys=atom_tys,
             chain_id=decoy_cid,
         )
+
         target_data = append_chain_to_data(
             target_data,
             pdb_path=default(tgt_pdb, decoy_pdb),
