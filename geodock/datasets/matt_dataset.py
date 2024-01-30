@@ -13,7 +13,8 @@ sys.path.append("/home/celine/GeoDock")
 from geodock.utils.pdb import save_PDB, place_fourth_atom
 from geodock.utils.coords6d import get_coords6d
 import numpy as np
-from geodock.datasets.helpers import get_item_from_pdbs_n_seq
+# from geodock.datasets.helpers import get_item_from_pdbs_n_seq
+from geodock.datasets.pinder_dataset_utils import get_example_from_pdbs_n_sequence, accept_example
 import geodock.datasets.protein_constants as pc
 import pandas as pd
 
@@ -205,6 +206,9 @@ class GeoDockDataset(data.Dataset):
             target_chain_ids=[None,None],
         )
 
+        if not accept_example(data):
+            return None
+
         if data is None:
             return None  ####################################################################################################################################
 
@@ -307,11 +311,10 @@ class GeoDockDataset(data.Dataset):
                 example = None
             
             if example is None:
-            
                 idx = random.randint(0, len(self))
                 skipped+=1
             else:
-                #print([k for k in example])
+                # print([k for k in example])
                 c1,c2 =len(example["seq1"]),len(example["seq2"])
                 if min(c1,c2)<30 or max(c1,c2)>1000:
                     example=None
