@@ -107,36 +107,36 @@ class GeoDockDataset(data.Dataset):
         return len(self.cluster_list)
 
 
-    def get_decoy_receptor_ligand_pdbs(self, structure_root):
-        # return pdb paths for receptor and ligand chain
-        source_list = ['holo']#['holo', 'apo', 'predicted']
-        extension=["R.pdb", "L.pdb"]
-        data_paths = dict()
-        for ext in extension:
-            random.shuffle(source_list)
-            # for element in os.listdir(structure_root):
-            for element in source_list:
-                file_path = os.path.join(structure_root, element)
+    # def get_decoy_receptor_ligand_pdbs(self, structure_root):
+    #     # return pdb paths for receptor and ligand chain
+    #     source_list = ['holo']#['holo', 'apo', 'predicted']
+    #     extension=["R.pdb", "L.pdb"]
+    #     data_paths = dict()
+    #     for ext in extension:
+    #         random.shuffle(source_list)
+    #         # for element in os.listdir(structure_root):
+    #         for element in source_list:
+    #             file_path = os.path.join(structure_root, element)
                 
-                # Just in case
-                if not os.path.isdir(file_path):
-                    continue
+    #             # Just in case
+    #             if not os.path.isdir(file_path):
+    #                 continue
 
-                # print(source_list, file_path)
+    #             # print(source_list, file_path)
 
-                files_in_directory = os.listdir(file_path)
-                if "element" == "apo":
-                    if "alt" in files_in_directory:
-                        files_in_directory = files_in_directory + os.listdir(os.path.join(file_path, "alt"))
+    #             files_in_directory = os.listdir(file_path)
+    #             if "element" == "apo":
+    #                 if "alt" in files_in_directory:
+    #                     files_in_directory = files_in_directory + os.listdir(os.path.join(file_path, "alt"))
 
-                # check if file exists
-                matching_files = [file for file in files_in_directory if file.endswith(ext)]
-                random.shuffle(matching_files)
-                if len(matching_files) > 0:
-                    data_paths[ext] = os.path.join(file_path, matching_files[0])
-                    break
+    #             # check if file exists
+    #             matching_files = [file for file in files_in_directory if file.endswith(ext)]
+    #             random.shuffle(matching_files)
+    #             if len(matching_files) > 0:
+    #                 data_paths[ext] = os.path.join(file_path, matching_files[0])
+    #                 break
         
-        return data_paths["R.pdb"], data_paths["L.pdb"]
+    #     return data_paths["R.pdb"], data_paths["L.pdb"]
 
 
     def get_contiguous_crop(self, crop_len: int, n_res: int):
@@ -172,6 +172,7 @@ class GeoDockDataset(data.Dataset):
         # load example
         # structure_root = os.path.join(self.data_dir, _id + ".pdb")
         structure_root = os.path.join(self.data_dir, _id) + ".pdb"
+
 
         # structure_root = os.path.join(self.data_dir, _id)
 

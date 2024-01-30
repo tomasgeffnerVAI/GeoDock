@@ -52,4 +52,4 @@ seed: 0
 name: null
 
 trainer:
-  devices: [0,1,2,3]
+  devices: [0] # [0,1,2,3]
