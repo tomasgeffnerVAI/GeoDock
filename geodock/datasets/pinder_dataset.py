@@ -98,7 +98,7 @@ class GeoDockDataset(data.Dataset):
     def get_decoy_receptor_ligand_pdbs(self, structure_root):
         # old folder structure in /home/matthewmcpartlon/pinder_iclr/train
         # Complex ID
-        # |-
+        # |--
         # return pdb paths for receptor and ligand chain
         source_list = ['holo']#['holo', 'apo', 'predicted']
         extension=["R.pdb", "L.pdb"]
