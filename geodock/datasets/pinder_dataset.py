@@ -41,49 +41,37 @@ class GeoDockDataset(data.Dataset):
         self.use_Cb = use_Cb
         
         self.data_dir = '/mnt/disks/pinder-us-east5-a-2024-01-09/pdbs'
+        cluster_file_path = "/mnt/disks/pinder-us-east5-a-2024-01-09/index.csv.gz"
 
         if dataset == "pinder_toyexample_train":
-            cluster_file_path = "/home/matthewmcpartlon/pinder_iclr/train_clusters.tsv"
 
-            # old cluster file had structure 
-            # cluster_8285_8285	3nk3__A1_P79762--3nk3__B1_P79762;3nk4__A1_P79762--3nk4__B1_P79762
-            # cluster_61723_61723	3nk3__A1_P79762--3nk3__B1_P79762
-
-            df = pd.read_csv(cluster_file_path, sep="\t", header=None, names=["cluster", "pdbs"]) 
+            df = pd.read_csv(cluster_file_path, compression='gzip')#, sep="\t", header=None, names=["cluster", "pdbs"])
+            # get train data
+            df_train = df[df['split']=='train'].reset_index(drop=True)
             # assign cluster dataframe
-            self.cluster_df = df 
+            self.cluster_df = df_train[['id','cluster_id']].groupby(by='cluster_id')['id'].apply(list).reset_index(name='pdbs') 
             # create list of clusters
-            cluster_list = df["cluster"].tolist()
-            # separate train and val
-            L = len(cluster_list)
-            self.cluster_list = cluster_list[:int(.95 * L)]
-               
-        
+            self.cluster_list = df_train["cluster_id"].tolist()
+
         if dataset == "pinder_toyexample_val":
-            cluster_file_path = "/home/matthewmcpartlon/pinder_iclr/train_clusters.tsv"
 
-            # old cluster file had structure 
-            # cluster_8285_8285	3nk3__A1_P79762--3nk3__B1_P79762;3nk4__A1_P79762--3nk4__B1_P79762
-            # cluster_61723_61723	3nk3__A1_P79762--3nk3__B1_P79762
-
-            df = pd.read_csv(cluster_file_path, sep="\t", header=None, names=["cluster", "pdbs"])
-            self.cluster_df = df
+            df = pd.read_csv(cluster_file_path, compression='gzip')#, sep="\t", header=None, names=["cluster", "pdbs"])
+            # get train data
+            df_val = df[df['split']=='val'].reset_index(drop=True)
+            # assign cluster dataframe
+            self.cluster_df = df_val[['id','cluster_id']].groupby(by='cluster_id')['id'].apply(list).reset_index(name='pdbs') 
             # create list of clusters
-            cluster_list = df["cluster"].tolist()
-            # separate train and val
-            L = len(cluster_list)
-            self.cluster_list = cluster_list[int(0.95 * L):]
+            self.cluster_list = df_val["cluster_id"].tolist()
             
-        
         if dataset == "pinder_toyexample_test":
-            self.data_list = "/home/matthewmcpartlon/pinder_iclr/test_clusters.tsv"
-            # old test cluster file structure
-            # cluster_3176_540 5t4y_B_5t4y_D;6zm1_A_6zm1_B;6zaz_A_6zaz_B;5t4y_B_5t4y_C;6zm1_A_6zm1_D;6zm1_C_6zm1_D
 
-            # create list of test clusters
-            with open(self.data_list, "r") as f:
-                lines = f.readlines()
-            self.file_list = [line.strip() for line in lines]
+            df = pd.read_csv(cluster_file_path, compression='gzip')#, sep="\t", header=None, names=["cluster", "pdbs"])
+            # get train data
+            df_test = df[df['split']=='test'].reset_index(drop=True)
+            # assign cluster dataframe
+            self.cluster_df = df_test[['id','cluster_id']].groupby(by='cluster_id')['id'].apply(list).reset_index(name='pdbs') 
+            # create list of clusters
+            self.cluster_list = df_test["cluster_id"].tolist()
 
 
         # This to download: model, alphabet = torch.hub.load("facebookresearch/esm:main", "esm2_t33_650M_UR50D")
@@ -94,16 +82,16 @@ class GeoDockDataset(data.Dataset):
     def __len__(self):
         return len(self.cluster_list)
 
-
+    ### this function was NOT used with /home/matthewmcpartlon/pinder_iclr/train ###
+    # was used to get decoy paths from old folder structure, leaving it just in case 
     def get_decoy_receptor_ligand_pdbs(self, structure_root):
-        # old folder structure in /home/matthewmcpartlon/pinder_iclr/train
-        # Complex ID
-        # |--
-        # return pdb paths for receptor and ligand chain
+
+        # return pdb paths for receptor and ligand chain (was used only for holo training)
         source_list = ['holo']#['holo', 'apo', 'predicted']
         extension=["R.pdb", "L.pdb"]
         data_paths = dict()
-
+        
+        # the following was to train with apo or predicted, so can mostly be ignored for now
         for ext in extension:
             random.shuffle(source_list)
             # for element in os.listdir(structure_root):
@@ -141,32 +129,30 @@ class GeoDockDataset(data.Dataset):
     
     
     def _get_item(self, idx: int):
-        # cluster_file_path = "/home/celine/GeoDock_data/train_clusters.tsv"
-        # #processed_file_path = 'graph_data/graphs' #if we want we can only include processed files
-        # #processed_files = set({os.path.splitext(x)[0].replace("ligand_","").replace("receptor_",""): x for x in os.listdir(processed_file_path)[:200] if x.endswith(".bin")})
-        # cluster_df = pd.read_csv(cluster_file_path, sep="\t", header=None, names=["cluster", "pdbs"]) # todo pass cluster file            
-        # cluster_df["pdbs"] = cluster_df["pdbs"].apply(lambda x: [y for y in x.split(";")])
-        # #cluster_df["pdbs"] = cluster_df["pdbs"].apply(lambda x: [y for y in x if y in processed_files])
-        # cluster_df = cluster_df[cluster_df["pdbs"].apply(len) > 0]
-        # self.file_list = [np.random.choice(x) for x in cluster_df['pdbs'] if x]
-        # #print(len(self.file_list), self.file_list[0:3])
-        
+               
         cluster_name = self.cluster_list[idx]
-        pdbs = self.cluster_df.loc[self.cluster_df['cluster'] == cluster_name, 'pdbs'].iloc[0]  # Each cluster has unique name this should be just a single element, hence the [0]
-        pdbs = pdbs.split(";")
+        pdbs = self.cluster_df.loc[self.cluster_df['cluster_id'] == cluster_name, 'pdbs'].iloc[0]  # Each cluster has unique name this should be just a single element, hence the [0]
         _id = random.choice(pdbs)
-
-        # print(cluster_name, len(pdbs), pdbs[0], "\n====")
-
-        # # Get info from file_list
-        # _id = self.file_list[idx]
-
-        # load example
-        # structure_root = os.path.join(self.data_dir, _id + ".pdb")
+        
+        # load example (if only holo, you can only load complex (structure_root) here and use it for both decoy and target)
         structure_root = os.path.join(self.data_dir, _id) + ".pdb"
+        data = get_item_from_pdbs_n_seq(
+            seq_paths=[None, None],
+            decoy_pdb_paths=[structure_root, structure_root],
+            target_pdb_paths=[structure_root, structure_root],
 
-        # structure_root = os.path.join(self.data_dir, _id)
+            # decoy_pdb_paths=[decoy_receptor_pdb, decoy_ligand_pdb],
+            # target_pdb_paths=[target_pdb, target_pdb],
 
+            atom_tys=tuple(pc.BB_ATOMS_GEO),
+            decoy_chain_ids=[None,None],  # TODO: might be B, A?? RL! -> updated comment, if sure now everything is R,L just change
+            # target_chain_ids=["R","L"],
+            target_chain_ids=[None,None],
+        )
+
+        ### This entire part is also older code, using the function above to get: decoy paths ###
+
+        # structure_root = os.path.join(self.data_dir, _id) + ".pdb"
         # print("structure_root", structure_root)
         # target_pdb = next(
         #    filter(lambda x: x.endswith(".pdb"), os.listdir(structure_root))
@@ -178,24 +164,17 @@ class GeoDockDataset(data.Dataset):
         # decoy_receptor_pdb, decoy_ligand_pdb = self.get_decoy_receptor_ligand_pdbs(
         #     structure_root
         # )
+        # data = get_item_from_pdbs_n_seq(
+        #     seq_paths=[None, None],
+        #     decoy_pdb_paths=[decoy_receptor_pdb, decoy_ligand_pdb],
+        #     target_pdb_paths=[target_pdb, target_pdb],
+        #     # TODO: make atom types in same order as geodock!
+        #     # atom_tys=tuple(pc.ALL_ATOMS),
+        #     atom_tys=tuple(pc.BB_ATOMS_GEO),
+        #     decoy_chain_ids=[None,None],  # TODO: might be B, A?? RL!
+        #     target_chain_ids=["R","L"],
+        # )
         
-        # exit()
-
-        data = get_item_from_pdbs_n_seq(
-            seq_paths=[None, None],
-            decoy_pdb_paths=[structure_root, structure_root],
-            target_pdb_paths=[structure_root, structure_root],
-
-            # decoy_pdb_paths=[decoy_receptor_pdb, decoy_ligand_pdb],
-            # target_pdb_paths=[target_pdb, target_pdb],
-            # TODO: make atom types in same order as geodock!
-            # atom_tys=tuple(pc.ALL_ATOMS),
-            atom_tys=tuple(pc.BB_ATOMS_GEO),
-            decoy_chain_ids=[None,None],  # TODO: might be B, A?? RL!
-            # target_chain_ids=["R","L"],
-            target_chain_ids=[None,None],
-        )
-
         if data is None:
             return None  ####################################################################################################################################
 

@@ -150,9 +150,9 @@ class GeoDockRunner():
 if __name__ == '__main__':
 
     # Define modes
-    testset = "pinder_xl"
+    testset = "pinder_af2"
     refinement_mode = False
-    run_mode = "CPU" #CPU
+    run_mode = "GPU" #CPU
 
     structure_modes = ["predicted"] #["apo", "holo"]#, "predicted"] #["holo", "apo", "predicted"]
 
@@ -161,8 +161,8 @@ if __name__ == '__main__':
     root = "/mnt/disks/pinder-us-east5-a-2024-01-18/pdbs"
     # Load index file
     # df = pd.read_csv("/home/celine/geodock_inference_240123/2hdi_mask_check.csv")
-    # df = pd.read_csv("/mnt/disks/pinder-us-east5-a-2024-01-18/index.csv.gz", compression='gzip')
-    df = pd.read_csv('/home/celine/geodock_inference_240124/index_xl_pred_cpu_seqs.csv')
+    df = pd.read_csv("/mnt/disks/pinder-us-east5-a-2024-01-18/index.csv.gz", compression='gzip')
+    # df = pd.read_csv('/home/celine/geodock_inference_240124/index_xl_pred_cpu_seqs.csv')
 
     
     print("======\nDocking\n======\n")

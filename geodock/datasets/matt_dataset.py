@@ -55,6 +55,10 @@ class GeoDockDataset(data.Dataset):
             self.data_dir = "/home/matthewmcpartlon/pinder_iclr/test"
             self.data_list = "/home/matthewmcpartlon/pinder_iclr/test_clusters.tsv"
 
+            # old test cluster file structure
+            # cluster_3176_540 5t4y_B_5t4y_D;6zm1_A_6zm1_B;6zaz_A_6zaz_B;5t4y_B_5t4y_C;6zm1_A_6zm1_D;6zm1_C_6zm1_D
+
+            # create list of test clusters
             with open(self.data_list, "r") as f:
                 lines = f.readlines()
             self.file_list = [line.strip() for line in lines]
@@ -81,10 +85,19 @@ class GeoDockDataset(data.Dataset):
             self.data_dir = "/home/matthewmcpartlon/pinder_iclr/train"
             cluster_file_path = "/home/matthewmcpartlon/pinder_iclr/train_clusters.tsv"
 
+            # old cluster file had structure 
+            # cluster_8285_8285	3nk3__A1_P79762--3nk3__B1_P79762; 3nk4__A1_P79762--3nk4__B1_P79762
+            # cluster_61723_61723	3nk3__A1_P79762--3nk3__B1_P79762
+
+
             df = pd.read_csv(cluster_file_path, sep="\t", header=None, names=["cluster", "pdbs"])  # todo pass cluster file
+
+            # create list of clusters
             cluster_list = df["cluster"].tolist()
             L = len(cluster_list)
+            # separate train and val
             self.cluster_list = cluster_list[:int(.95 * L)]
+            # assign cluster dataframe
             self.cluster_df = df
         
         if dataset == "pinder_toyexample_val":
@@ -94,9 +107,12 @@ class GeoDockDataset(data.Dataset):
             # cluster_file_path = "/home/celine/pinder-public/train_clusters.tsv"
 
             df = pd.read_csv(cluster_file_path, sep="\t", header=None, names=["cluster", "pdbs"])  # todo pass cluster file
+            # create list of clusters
             cluster_list = df["cluster"].tolist()
+            # separate train and val
             L = len(cluster_list)
             self.cluster_list = cluster_list[int(0.95 * L):]
+            # assign cluster dataframe
             self.cluster_df = df
 
         # This to download: model, alphabet = torch.hub.load("facebookresearch/esm:main", "esm2_t33_650M_UR50D")
@@ -107,37 +123,38 @@ class GeoDockDataset(data.Dataset):
     def __len__(self):
         return len(self.cluster_list)
 
-
-    # def get_decoy_receptor_ligand_pdbs(self, structure_root):
-    #     # return pdb paths for receptor and ligand chain
-    #     source_list = ['holo']#['holo', 'apo', 'predicted']
-    #     extension=["R.pdb", "L.pdb"]
-    #     data_paths = dict()
-    #     for ext in extension:
-    #         random.shuffle(source_list)
-    #         # for element in os.listdir(structure_root):
-    #         for element in source_list:
-    #             file_path = os.path.join(structure_root, element)
+    ### this function was NOT used with /home/matthewmcpartlon/pinder_iclr/train ###
+    # was used to get decoy paths from old folder structure
+    def get_decoy_receptor_ligand_pdbs(self, structure_root):
+        # return pdb paths for receptor and ligand chain
+        source_list = ['holo']#['holo', 'apo', 'predicted']
+        extension=["R.pdb", "L.pdb"]
+        data_paths = dict()
+        for ext in extension:
+            random.shuffle(source_list)
+            # for element in os.listdir(structure_root):
+            for element in source_list:
+                file_path = os.path.join(structure_root, element)
                 
-    #             # Just in case
-    #             if not os.path.isdir(file_path):
-    #                 continue
+                # Just in case
+                if not os.path.isdir(file_path):
+                    continue
 
-    #             # print(source_list, file_path)
+                # print(source_list, file_path)
 
-    #             files_in_directory = os.listdir(file_path)
-    #             if "element" == "apo":
-    #                 if "alt" in files_in_directory:
-    #                     files_in_directory = files_in_directory + os.listdir(os.path.join(file_path, "alt"))
+                files_in_directory = os.listdir(file_path)
+                if "element" == "apo":
+                    if "alt" in files_in_directory:
+                        files_in_directory = files_in_directory + os.listdir(os.path.join(file_path, "alt"))
 
-    #             # check if file exists
-    #             matching_files = [file for file in files_in_directory if file.endswith(ext)]
-    #             random.shuffle(matching_files)
-    #             if len(matching_files) > 0:
-    #                 data_paths[ext] = os.path.join(file_path, matching_files[0])
-    #                 break
+                # check if file exists
+                matching_files = [file for file in files_in_directory if file.endswith(ext)]
+                random.shuffle(matching_files)
+                if len(matching_files) > 0:
+                    data_paths[ext] = os.path.join(file_path, matching_files[0])
+                    break
         
-    #     return data_paths["R.pdb"], data_paths["L.pdb"]
+        return data_paths["R.pdb"], data_paths["L.pdb"]
 
 
     def get_contiguous_crop(self, crop_len: int, n_res: int):
@@ -174,7 +191,8 @@ class GeoDockDataset(data.Dataset):
         # structure_root = os.path.join(self.data_dir, _id + ".pdb")
         structure_root = os.path.join(self.data_dir, _id) + ".pdb"
 
-
+        ### This entire part is also older code, using the function above to get: decoy paths ###
+        
         # structure_root = os.path.join(self.data_dir, _id)
 
         # print("structure_root", structure_root)
@@ -191,6 +209,7 @@ class GeoDockDataset(data.Dataset):
         
         # exit()
 
+        ### load example (if only holo, you can only load complex (structure_root) here and use it for both decoy and target) ###
         data = get_item_from_pdbs_n_seq(
             seq_paths=[None, None],
             decoy_pdb_paths=[structure_root, structure_root],

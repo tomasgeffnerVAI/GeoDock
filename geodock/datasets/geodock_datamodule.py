@@ -1,7 +1,8 @@
 from typing import Optional
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader, Dataset, random_split
-from geodock.datasets.matt_dataset import GeoDockDataset
+# this is an important line to change if the dataset input is changed!ß
+from geodock.datasets.pinder_dataset import GeoDockDataset
 
 
 class GeoDockDataModule(pl.LightningDataModule):

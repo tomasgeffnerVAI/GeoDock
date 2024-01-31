@@ -589,7 +589,6 @@ def get_item_from_pdbs_n_seq(
     """
 
     # get chains + seqs
-    # print("hi", decoy_pdb_paths[0])
     seq_list, chain_list = safe_load_sequence(None, decoy_pdb_paths[0], chain_id=None) # check! which sequence
 
     decoy_chain_ids = default(chain_list, [None] * len(decoy_pdb_paths))
